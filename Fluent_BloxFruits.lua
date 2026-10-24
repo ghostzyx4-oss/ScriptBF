@@ -375,198 +375,278 @@ game:GetService("Players").LocalPlayer.Idled:connect(function()
 	wait(1)
 	vu:Button2Up(Vector2.new(0, 0), workspace.CurrentCamera.CFrame)
 end)
-local A =
-	loadstring(game:HttpGet("https://raw.githubusercontent.com/obiiyeuem/vthangsitink/refs/heads/main/zzzz.lua"))()
-Main = guardUI(A.CreateMain({ Title = "Blox Fruit", Desc = " - Blox Fruit" }), "Main")
-
--- Tema PRETO + icone Spider-Man (botao abrir/fechar e logo) - loop continuo
-task.spawn(function()
-	local NEW_ICON = "rbxassetid://109740536456559"
-	local BLACK = Color3.fromRGB(0, 0, 0)
-	local PANEL = Color3.fromRGB(8, 8, 8)
-	local SURFACE = Color3.fromRGB(18, 18, 18)
-	local LINE = Color3.fromRGB(45, 45, 45)
-
-	local CoreGui = game:GetService("CoreGui")
-	local Players = game:GetService("Players")
-	local lp = Players.LocalPlayer
-
-	local function isGameGui(gui)
-		if not gui then return true end
-		local n = tostring(gui.Name)
-		local nl = string.lower(n)
-		if n == "Main" or n == "Main (minimal)" then return true end
-		if nl:find("touch") or nl:find("hotbar") or nl:find("backpack") or nl:find("health")
-			or nl:find("chat") or nl:find("playerlist") or nl:find("bubblechat") then
-			return true
-		end
-		return false
-	end
-
-	local function guiHasHubText(gui)
-		local ok, found = pcall(function()
-			for _, d in ipairs(gui:GetDescendants()) do
-				if d:IsA("TextLabel") or d:IsA("TextButton") then
-					local t = string.lower(tostring(d.Text or ""))
-					if t:find("banana cat") or t:find("blox fruit") or t:find("farming") then
-						if #t < 80 then
-							return true
-						end
-					end
-				end
-			end
-			return false
+-- ===================== FLUENT UI (paste PJe3qj funcs + botao abrir/fechar) =====================
+local Fluent
+do
+	local urls = {
+		"https://github.com/dawid-scripts/Fluent/releases/latest/download/main.lua",
+		"https://raw.githubusercontent.com/dawid-scripts/Fluent/master/main.lua",
+		"https://cdn.jsdelivr.net/gh/dawid-scripts/Fluent@master/main.lua",
+		"https://raw.githubusercontent.com/huyyeuemhihi/Fluent/refs/heads/main/Fluentvip.lua",
+	}
+	for _, url in ipairs(urls) do
+		local ok, res = pcall(function()
+			return loadstring(game:HttpGet(url))()
 		end)
-		return ok and found
-	end
-
-	local function isHubGui(gui)
-		if not gui or not gui:IsA("ScreenGui") then return false end
-		if isGameGui(gui) then return false end
-		local n = string.lower(tostring(gui.Name))
-		if n:find("banana") or n:find("hub") or n:find("library") or n:find("window")
-			or n:find("blox") or n:find("fluent") or n:find("redz") then
-			return true
-		end
-		return guiHasHubText(gui)
-	end
-
-	local function inBlockedPath(obj)
-		local p = obj
-		for _ = 1, 12 do
-			if not p then break end
-			local pn = string.lower(tostring(p.Name))
-			if pn == "main" or pn == "main (minimal)" then return true end
-			if pn:find("hotbar") or pn:find("skill") or pn:find("tool") or pn:find("backpack")
-				or pn:find("ability") or pn:find("combat") or pn:find("touchcontrol") then
-				return true
-			end
-			p = p.Parent
-		end
-		return false
-	end
-
-	local function paintBlack(root)
-		for _, obj in ipairs(root:GetDescendants()) do
-			pcall(function()
-				if obj:IsA("Frame") or obj:IsA("ScrollingFrame") then
-					if obj.BackgroundTransparency < 0.9 then
-						obj.BackgroundColor3 = PANEL
-					end
-				elseif obj:IsA("TextButton") then
-					if obj.BackgroundTransparency < 0.9 then
-						local c = obj.BackgroundColor3
-						-- nao deixar amarelo/azul da lib
-						if c.R > 0.4 or c.G > 0.4 or c.B > 0.4 or (c.R + c.G + c.B) > 0.25 then
-							obj.BackgroundColor3 = SURFACE
-						end
-					end
-				elseif obj:IsA("UIStroke") then
-					obj.Color = LINE
-				elseif obj:IsA("UIGradient") then
-					pcall(function()
-						obj.Color = ColorSequence.new(BLACK, PANEL)
-					end)
-				end
-			end)
+		if ok and type(res) == "table" and res.CreateWindow then
+			Fluent = res
+			break
 		end
 	end
+end
+if not Fluent then
+	error("[Hub] Fluent UI falhou ao carregar (HttpGet).")
+end
 
-	local function setIcon(obj)
+local Window = Fluent:CreateWindow({
+	Title = "Banana Cat Hub",
+	SubTitle = "Blox Fruit",
+	TabWidth = 160,
+	Size = UDim2.fromOffset(560, 420),
+	Acrylic = false,
+	Theme = "Dark",
+	MinimizeKey = Enum.KeyCode.LeftControl,
+})
+
+local Options = Fluent.Options or {}
+local A = { Options = Options }
+
+function A.CreateNoti(cfg)
+	cfg = cfg or {}
+	pcall(function()
+		Fluent:Notify({
+			Title = cfg.Title or "Hub",
+			Content = cfg.Desc or cfg.Content or "",
+			Duration = cfg.ShowTime or cfg.Duration or 5,
+		})
+	end)
+end
+
+-- Adapter: API do paste (CreatePage/Section/Toggle) -> Fluent
+local function makeSection(tab)
+	local Section = {}
+	function Section.CreateToggle(opts, cb)
+		opts = opts or {}
+		local title = opts.Title or "Toggle"
+		local def = opts.Default or false
+		local ok, t = pcall(function()
+			return tab:AddToggle(title, {
+				Title = title,
+				Description = opts.Desc or "",
+				Default = def,
+				Callback = function(v)
+					if cb then pcall(cb, v) end
+				end,
+			})
+		end)
+		return t
+	end
+	function Section.CreateButton(opts, cb)
+		opts = opts or {}
 		pcall(function()
-			if obj.Image and obj.Image ~= NEW_ICON then
-				obj.Image = NEW_ICON
+			tab:AddButton({
+				Title = opts.Title or "Button",
+				Description = opts.Desc or "",
+				Callback = function()
+					if cb then pcall(cb) end
+				end,
+			})
+		end)
+	end
+	function Section.CreateDropdown(opts, cb)
+		opts = opts or {}
+		local list = opts.List or opts.Values or { "None" }
+		local def = opts.Default
+		local dd
+		pcall(function()
+			dd = tab:AddDropdown(opts.Title or "Dropdown", {
+				Title = opts.Title or "Dropdown",
+				Values = list,
+				Default = def,
+				Multi = opts.Selected == true,
+				Callback = function(v)
+					if cb then pcall(cb, v) end
+				end,
+			})
+		end)
+		return {
+			GetNewList = function(_, newList)
+				pcall(function()
+					if dd and dd.SetValues then
+						dd:SetValues(newList or list)
+					elseif dd and dd.SetValue then
+						-- ignore
+					end
+				end)
+			end,
+		}
+	end
+	function Section.CreateLabel(opts)
+		opts = opts or {}
+		local p
+		pcall(function()
+			p = tab:AddParagraph({
+				Title = opts.Title or "",
+				Content = opts.Content or opts.Title or "",
+			})
+		end)
+		return {
+			SetText = function(_, text)
+				pcall(function()
+					if p and p.SetDesc then
+						p:SetDesc(tostring(text))
+					elseif p and p.Set then
+						p:Set({ Title = opts.Title or "", Content = tostring(text) })
+					end
+				end)
+			end,
+		}
+	end
+	function Section.CreateSlider(opts, cb)
+		opts = opts or {}
+		pcall(function()
+			tab:AddSlider(opts.Title or "Slider", {
+				Title = opts.Title or "Slider",
+				Default = opts.Default or 0,
+				Min = opts.Min or 0,
+				Max = opts.Max or 100,
+				Rounding = opts.Rounding or 1,
+				Callback = function(v)
+					if cb then pcall(cb, v) end
+				end,
+			})
+		end)
+	end
+	function Section.CreateTextBox(opts, cb)
+		opts = opts or {}
+		pcall(function()
+			tab:AddInput(opts.Title or "Input", {
+				Title = opts.Title or "Input",
+				Default = opts.Default or "",
+				Placeholder = opts.Placeholder or "",
+				Callback = function(v)
+					if cb then pcall(cb, v) end
+				end,
+			})
+		end)
+	end
+	return Section
+end
+
+local Main = {}
+function Main.CreatePage(cfg)
+	cfg = cfg or {}
+	local name = cfg.Page_Title or cfg.Page_Name or "Tab"
+	local tab
+	pcall(function()
+		tab = Window:AddTab({ Title = name, Icon = "" })
+	end)
+	if not tab then
+		tab = { AddToggle = function() end, AddButton = function() end, AddDropdown = function() end, AddParagraph = function() end, AddSection = function() end, AddSlider = function() end, AddInput = function() end }
+	end
+	local Page = {}
+	function Page.CreateSection(secName)
+		pcall(function()
+			if tab.AddSection then
+				tab:AddSection(tostring(secName or "Section"))
+			end
+		end)
+		return makeSection(tab)
+	end
+	return Page
+end
+
+-- Botao abrir/fechar (estilo paste / Fluent MinimizeKey + botao flutuante)
+do
+	local CoreGui = game:GetService("CoreGui")
+	local lp = game:GetService("Players").LocalPlayer
+	local parent = CoreGui
+	pcall(function()
+		if not parent then parent = lp:WaitForChild("PlayerGui") end
+	end)
+
+	local sg = Instance.new("ScreenGui")
+	sg.Name = "HubToggleUI"
+	sg.ResetOnSpawn = false
+	sg.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
+	sg.DisplayOrder = 999
+	pcall(function() sg.Parent = parent end)
+	if not sg.Parent then
+		sg.Parent = lp:WaitForChild("PlayerGui")
+	end
+
+	local btn = Instance.new("ImageButton")
+	btn.Name = "OpenClose"
+	btn.Size = UDim2.new(0, 48, 0, 48)
+	btn.Position = UDim2.new(0, 14, 0.42, 0)
+	btn.BackgroundColor3 = Color3.fromRGB(15, 15, 15)
+	btn.Image = "rbxassetid://109740536456559" -- Spider-Man
+	btn.ScaleType = Enum.ScaleType.Fit
+	btn.Parent = sg
+	Instance.new("UICorner", btn).CornerRadius = UDim.new(1, 0)
+	local st = Instance.new("UIStroke", btn)
+	st.Color = Color3.fromRGB(80, 80, 80)
+	st.Thickness = 1.5
+
+	local minimized = false
+	local function toggle()
+		minimized = not minimized
+		pcall(function()
+			if Window.Minimize then
+				Window:Minimize()
+			elseif Window.Dialog then
+				-- Fluent: some builds use Minimize via key only; hide root
+			end
+		end)
+		-- fallback: procura ScreenGui Fluent e troca Enabled
+		pcall(function()
+			for _, gui in ipairs(parent:GetChildren()) do
+				if gui:IsA("ScreenGui") and gui ~= sg then
+					local n = string.lower(gui.Name)
+					if n:find("fluent") or n:find("window") or n:find("library") then
+						if minimized then
+							-- keep toggle visible
+						end
+					end
+				end
+			end
+		end)
+		-- Fluent vip: Window.Minimize / Unminimize
+		pcall(function()
+			if typeof(Window.Minimize) == "function" then
+				-- already called
 			end
 		end)
 	end
 
-	local function swapIcons(root)
-		for _, obj in ipairs(root:GetDescendants()) do
-			if not inBlockedPath(obj) then
-				if obj:IsA("ImageButton") then
-					local ok, sz = pcall(function() return obj.AbsoluteSize end)
-					if ok and sz and sz.X >= 24 and sz.X <= 90 and sz.Y >= 24 and sz.Y <= 90 then
-						setIcon(obj)
-					end
-				elseif obj:IsA("ImageLabel") then
-					local ok, sz = pcall(function() return obj.AbsoluteSize end)
-					if ok and sz and sz.X >= 20 and sz.X <= 100 and sz.Y >= 20 and sz.Y <= 100 then
-						local parent = obj.Parent
-						local nearTitle = false
-						if parent then
-							for _, sib in ipairs(parent:GetDescendants()) do
-								if sib:IsA("TextLabel") then
-									local t = string.lower(tostring(sib.Text or ""))
-									if t:find("banana") or t:find("blox") or t:find("hub") then
-										nearTitle = true
-										break
-									end
-								end
-							end
-						end
-						if nearTitle then
-							setIcon(obj)
-						end
-					end
-				end
+	btn.MouseButton1Click:Connect(function()
+		pcall(function()
+			if Window.Minimize then
+				Window:Minimize()
 			end
-		end
-	end
+		end)
+	end)
 
-	-- tambem pega botao flutuante fora da janela principal (ScreenGui separado)
-	local function swapFloatingToggles()
-		local parents = { CoreGui }
-		local pg = lp:FindFirstChild("PlayerGui")
-		if pg then table.insert(parents, pg) end
-		for _, parent in ipairs(parents) do
-			for _, gui in ipairs(parent:GetChildren()) do
-				if gui:IsA("ScreenGui") and not isGameGui(gui) then
-					-- se tem so 1-3 ImageButtons pequenos = provavelmente toggle da hub
-					local imgs = {}
-					for _, d in ipairs(gui:GetDescendants()) do
-						if d:IsA("ImageButton") and not inBlockedPath(d) then
-							local ok, sz = pcall(function() return d.AbsoluteSize end)
-							if ok and sz and sz.X >= 30 and sz.X <= 80 and sz.Y >= 30 and sz.Y <= 80 then
-								table.insert(imgs, d)
-							end
-						end
-					end
-					if #imgs >= 1 and #imgs <= 4 and (isHubGui(gui) or #gui:GetChildren() <= 5) then
-						for _, d in ipairs(imgs) do
-							setIcon(d)
-						end
-					end
-				end
+	-- LeftControl tambem minimiza (igual paste Fluent)
+	pcall(function()
+		game:GetService("UserInputService").InputBegan:Connect(function(input, gpe)
+			if gpe then return end
+			if input.KeyCode == Enum.KeyCode.LeftControl then
+				pcall(function()
+					if Window.Minimize then Window:Minimize() end
+				end)
 			end
-		end
-	end
+		end)
+	end)
+end
 
-	local function process()
-		local parents = { CoreGui }
-		local pg = lp:FindFirstChild("PlayerGui")
-		if pg then table.insert(parents, pg) end
-		for _, parent in ipairs(parents) do
-			for _, gui in ipairs(parent:GetChildren()) do
-				if gui:IsA("ScreenGui") and isHubGui(gui) then
-					swapIcons(gui)
-					paintBlack(gui)
-				end
-			end
-		end
-		swapFloatingToggles()
-	end
-
-	-- aplica por 2 minutos e depois a cada 2s (pra nao perder se a lib redesenhar)
-	local t0 = tick()
-	while true do
-		pcall(process)
-		if tick() - t0 < 120 then
-			task.wait(0.3)
-		else
-			task.wait(2)
-		end
-	end
+pcall(function()
+	Fluent:Notify({ Title = "Banana Cat Hub", Content = "Fluent UI carregada", Duration = 4 })
 end)
+
+local function guardUI(obj, label)
+	return obj
+end
 
 PageShop = Main.CreatePage({ Page_Name = "Shop", Page_Title = "Shop" })
 getgenv().Options = A.Options
