@@ -379,43 +379,39 @@ local A =
 	loadstring(game:HttpGet("https://raw.githubusercontent.com/obiiyeuem/vthangsitink/refs/heads/main/zzzz.lua"))()
 Main = guardUI(A.CreateMain({ Title = "Blox Fruit", Desc = " - Blox Fruit" }), "Main")
 
--- Icones (SO botao abrir/fechar + logo da HUB) e tema PRETO (so na HUB)
+-- Tema PRETO + icone Spider-Man (botao abrir/fechar e logo) - loop continuo
 task.spawn(function()
 	local NEW_ICON = "rbxassetid://109740536456559"
 	local BLACK = Color3.fromRGB(0, 0, 0)
-	local PANEL = Color3.fromRGB(12, 12, 12)
-	local SURFACE = Color3.fromRGB(20, 20, 20)
-	local LINE = Color3.fromRGB(40, 40, 40)
+	local PANEL = Color3.fromRGB(8, 8, 8)
+	local SURFACE = Color3.fromRGB(18, 18, 18)
+	local LINE = Color3.fromRGB(45, 45, 45)
 
 	local CoreGui = game:GetService("CoreGui")
 	local Players = game:GetService("Players")
 	local lp = Players.LocalPlayer
-	local changed = {}
 
 	local function isGameGui(gui)
 		if not gui then return true end
 		local n = tostring(gui.Name)
 		local nl = string.lower(n)
 		if n == "Main" or n == "Main (minimal)" then return true end
-		if nl:find("touch") or nl:find("hotbar") or nl:find("backpack") or nl:find("health") or nl:find("chat") then
+		if nl:find("touch") or nl:find("hotbar") or nl:find("backpack") or nl:find("health")
+			or nl:find("chat") or nl:find("playerlist") or nl:find("bubblechat") then
 			return true
 		end
 		return false
 	end
 
-	local function isHubGui(gui)
-		if not gui or not gui:IsA("ScreenGui") then return false end
-		if isGameGui(gui) then return false end
-		local n = string.lower(gui.Name)
-		if n:find("blox") or n:find("banana") or n:find("hub") or n:find("library") or n:find("window") or n:find("redz") then
-			return true
-		end
+	local function guiHasHubText(gui)
 		local ok, found = pcall(function()
 			for _, d in ipairs(gui:GetDescendants()) do
-				if d:IsA("TextLabel") then
+				if d:IsA("TextLabel") or d:IsA("TextButton") then
 					local t = string.lower(tostring(d.Text or ""))
-					if t == "blox fruit" or t:find("blox fruit") and #t < 50 then
-						return true
+					if t:find("banana cat") or t:find("blox fruit") or t:find("farming") then
+						if #t < 80 then
+							return true
+						end
 					end
 				end
 			end
@@ -424,12 +420,25 @@ task.spawn(function()
 		return ok and found
 	end
 
+	local function isHubGui(gui)
+		if not gui or not gui:IsA("ScreenGui") then return false end
+		if isGameGui(gui) then return false end
+		local n = string.lower(tostring(gui.Name))
+		if n:find("banana") or n:find("hub") or n:find("library") or n:find("window")
+			or n:find("blox") or n:find("fluent") or n:find("redz") then
+			return true
+		end
+		return guiHasHubText(gui)
+	end
+
 	local function inBlockedPath(obj)
 		local p = obj
-		for _ = 1, 10 do
+		for _ = 1, 12 do
 			if not p then break end
 			local pn = string.lower(tostring(p.Name))
-			if pn:find("hotbar") or pn:find("skill") or pn:find("tool") or pn:find("backpack") or pn:find("ability") or pn:find("combat") then
+			if pn == "main" or pn == "main (minimal)" then return true end
+			if pn:find("hotbar") or pn:find("skill") or pn:find("tool") or pn:find("backpack")
+				or pn:find("ability") or pn:find("combat") or pn:find("touchcontrol") then
 				return true
 			end
 			p = p.Parent
@@ -441,51 +450,90 @@ task.spawn(function()
 		for _, obj in ipairs(root:GetDescendants()) do
 			pcall(function()
 				if obj:IsA("Frame") or obj:IsA("ScrollingFrame") then
-					if obj.BackgroundTransparency < 0.85 then
-						local c = obj.BackgroundColor3
-						if (c.R + c.G + c.B) / 3 > 0.08 then
-							obj.BackgroundColor3 = PANEL
-						else
-							obj.BackgroundColor3 = BLACK
-						end
+					if obj.BackgroundTransparency < 0.9 then
+						obj.BackgroundColor3 = PANEL
 					end
 				elseif obj:IsA("TextButton") then
-					if obj.BackgroundTransparency < 0.85 then
-						obj.BackgroundColor3 = SURFACE
+					if obj.BackgroundTransparency < 0.9 then
+						local c = obj.BackgroundColor3
+						-- nao deixar amarelo/azul da lib
+						if c.R > 0.4 or c.G > 0.4 or c.B > 0.4 or (c.R + c.G + c.B) > 0.25 then
+							obj.BackgroundColor3 = SURFACE
+						end
 					end
 				elseif obj:IsA("UIStroke") then
 					obj.Color = LINE
+				elseif obj:IsA("UIGradient") then
+					pcall(function()
+						obj.Color = ColorSequence.new(BLACK, PANEL)
+					end)
 				end
 			end)
 		end
 	end
 
-	local function swapOnlyHubButtons(root)
+	local function setIcon(obj)
+		pcall(function()
+			if obj.Image and obj.Image ~= NEW_ICON then
+				obj.Image = NEW_ICON
+			end
+		end)
+	end
+
+	local function swapIcons(root)
 		for _, obj in ipairs(root:GetDescendants()) do
-			if (obj:IsA("ImageButton") or obj:IsA("ImageLabel")) and not changed[obj] and not inBlockedPath(obj) then
-				local ok, sz = pcall(function() return obj.AbsoluteSize end)
-				if ok and sz and sz.X >= 28 and sz.X <= 70 and sz.Y >= 28 and sz.Y <= 70 then
-					if obj:IsA("ImageButton") and obj.Image and obj.Image ~= "" then
-						changed[obj] = true
-						pcall(function() obj.Image = NEW_ICON end)
-					elseif obj:IsA("ImageLabel") and obj.Image and obj.Image ~= "" then
-						-- logo so se estiver perto do titulo
+			if not inBlockedPath(obj) then
+				if obj:IsA("ImageButton") then
+					local ok, sz = pcall(function() return obj.AbsoluteSize end)
+					if ok and sz and sz.X >= 24 and sz.X <= 90 and sz.Y >= 24 and sz.Y <= 90 then
+						setIcon(obj)
+					end
+				elseif obj:IsA("ImageLabel") then
+					local ok, sz = pcall(function() return obj.AbsoluteSize end)
+					if ok and sz and sz.X >= 20 and sz.X <= 100 and sz.Y >= 20 and sz.Y <= 100 then
 						local parent = obj.Parent
-						local hasTitle = false
+						local nearTitle = false
 						if parent then
 							for _, sib in ipairs(parent:GetDescendants()) do
 								if sib:IsA("TextLabel") then
 									local t = string.lower(tostring(sib.Text or ""))
-									if t:find("blox") or t:find("fruit") or t:find("hub") then
-										hasTitle = true
+									if t:find("banana") or t:find("blox") or t:find("hub") then
+										nearTitle = true
 										break
 									end
 								end
 							end
 						end
-						if hasTitle then
-							changed[obj] = true
-							pcall(function() obj.Image = NEW_ICON end)
+						if nearTitle then
+							setIcon(obj)
+						end
+					end
+				end
+			end
+		end
+	end
+
+	-- tambem pega botao flutuante fora da janela principal (ScreenGui separado)
+	local function swapFloatingToggles()
+		local parents = { CoreGui }
+		local pg = lp:FindFirstChild("PlayerGui")
+		if pg then table.insert(parents, pg) end
+		for _, parent in ipairs(parents) do
+			for _, gui in ipairs(parent:GetChildren()) do
+				if gui:IsA("ScreenGui") and not isGameGui(gui) then
+					-- se tem so 1-3 ImageButtons pequenos = provavelmente toggle da hub
+					local imgs = {}
+					for _, d in ipairs(gui:GetDescendants()) do
+						if d:IsA("ImageButton") and not inBlockedPath(d) then
+							local ok, sz = pcall(function() return d.AbsoluteSize end)
+							if ok and sz and sz.X >= 30 and sz.X <= 80 and sz.Y >= 30 and sz.Y <= 80 then
+								table.insert(imgs, d)
+							end
+						end
+					end
+					if #imgs >= 1 and #imgs <= 4 and (isHubGui(gui) or #gui:GetChildren() <= 5) then
+						for _, d in ipairs(imgs) do
+							setIcon(d)
 						end
 					end
 				end
@@ -494,22 +542,29 @@ task.spawn(function()
 	end
 
 	local function process()
-		local list = { CoreGui }
+		local parents = { CoreGui }
 		local pg = lp:FindFirstChild("PlayerGui")
-		if pg then table.insert(list, pg) end
-		for _, parent in ipairs(list) do
+		if pg then table.insert(parents, pg) end
+		for _, parent in ipairs(parents) do
 			for _, gui in ipairs(parent:GetChildren()) do
 				if gui:IsA("ScreenGui") and isHubGui(gui) then
-					swapOnlyHubButtons(gui)
+					swapIcons(gui)
 					paintBlack(gui)
 				end
 			end
 		end
+		swapFloatingToggles()
 	end
 
-	for _ = 1, 25 do
+	-- aplica por 2 minutos e depois a cada 2s (pra nao perder se a lib redesenhar)
+	local t0 = tick()
+	while true do
 		pcall(process)
-		task.wait(0.25)
+		if tick() - t0 < 120 then
+			task.wait(0.3)
+		else
+			task.wait(2)
+		end
 	end
 end)
 
