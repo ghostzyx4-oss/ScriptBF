@@ -378,6 +378,141 @@ end)
 local A =
 	loadstring(game:HttpGet("https://raw.githubusercontent.com/obiiyeuem/vthangsitink/refs/heads/main/zzzz.lua"))()
 Main = guardUI(A.CreateMain({ Title = "Blox Fruit", Desc = " - Blox Fruit" }), "Main")
+
+-- Icones (SO botao abrir/fechar + logo da HUB) e tema PRETO (so na HUB)
+task.spawn(function()
+	local NEW_ICON = "rbxassetid://109740536456559"
+	local BLACK = Color3.fromRGB(0, 0, 0)
+	local PANEL = Color3.fromRGB(12, 12, 12)
+	local SURFACE = Color3.fromRGB(20, 20, 20)
+	local LINE = Color3.fromRGB(40, 40, 40)
+
+	local CoreGui = game:GetService("CoreGui")
+	local Players = game:GetService("Players")
+	local lp = Players.LocalPlayer
+	local changed = {}
+
+	local function isGameGui(gui)
+		if not gui then return true end
+		local n = tostring(gui.Name)
+		local nl = string.lower(n)
+		if n == "Main" or n == "Main (minimal)" then return true end
+		if nl:find("touch") or nl:find("hotbar") or nl:find("backpack") or nl:find("health") or nl:find("chat") then
+			return true
+		end
+		return false
+	end
+
+	local function isHubGui(gui)
+		if not gui or not gui:IsA("ScreenGui") then return false end
+		if isGameGui(gui) then return false end
+		local n = string.lower(gui.Name)
+		if n:find("blox") or n:find("banana") or n:find("hub") or n:find("library") or n:find("window") or n:find("redz") then
+			return true
+		end
+		local ok, found = pcall(function()
+			for _, d in ipairs(gui:GetDescendants()) do
+				if d:IsA("TextLabel") then
+					local t = string.lower(tostring(d.Text or ""))
+					if t == "blox fruit" or t:find("blox fruit") and #t < 50 then
+						return true
+					end
+				end
+			end
+			return false
+		end)
+		return ok and found
+	end
+
+	local function inBlockedPath(obj)
+		local p = obj
+		for _ = 1, 10 do
+			if not p then break end
+			local pn = string.lower(tostring(p.Name))
+			if pn:find("hotbar") or pn:find("skill") or pn:find("tool") or pn:find("backpack") or pn:find("ability") or pn:find("combat") then
+				return true
+			end
+			p = p.Parent
+		end
+		return false
+	end
+
+	local function paintBlack(root)
+		for _, obj in ipairs(root:GetDescendants()) do
+			pcall(function()
+				if obj:IsA("Frame") or obj:IsA("ScrollingFrame") then
+					if obj.BackgroundTransparency < 0.85 then
+						local c = obj.BackgroundColor3
+						if (c.R + c.G + c.B) / 3 > 0.08 then
+							obj.BackgroundColor3 = PANEL
+						else
+							obj.BackgroundColor3 = BLACK
+						end
+					end
+				elseif obj:IsA("TextButton") then
+					if obj.BackgroundTransparency < 0.85 then
+						obj.BackgroundColor3 = SURFACE
+					end
+				elseif obj:IsA("UIStroke") then
+					obj.Color = LINE
+				end
+			end)
+		end
+	end
+
+	local function swapOnlyHubButtons(root)
+		for _, obj in ipairs(root:GetDescendants()) do
+			if (obj:IsA("ImageButton") or obj:IsA("ImageLabel")) and not changed[obj] and not inBlockedPath(obj) then
+				local ok, sz = pcall(function() return obj.AbsoluteSize end)
+				if ok and sz and sz.X >= 28 and sz.X <= 70 and sz.Y >= 28 and sz.Y <= 70 then
+					if obj:IsA("ImageButton") and obj.Image and obj.Image ~= "" then
+						changed[obj] = true
+						pcall(function() obj.Image = NEW_ICON end)
+					elseif obj:IsA("ImageLabel") and obj.Image and obj.Image ~= "" then
+						-- logo so se estiver perto do titulo
+						local parent = obj.Parent
+						local hasTitle = false
+						if parent then
+							for _, sib in ipairs(parent:GetDescendants()) do
+								if sib:IsA("TextLabel") then
+									local t = string.lower(tostring(sib.Text or ""))
+									if t:find("blox") or t:find("fruit") or t:find("hub") then
+										hasTitle = true
+										break
+									end
+								end
+							end
+						end
+						if hasTitle then
+							changed[obj] = true
+							pcall(function() obj.Image = NEW_ICON end)
+						end
+					end
+				end
+			end
+		end
+	end
+
+	local function process()
+		local list = { CoreGui }
+		local pg = lp:FindFirstChild("PlayerGui")
+		if pg then table.insert(list, pg) end
+		for _, parent in ipairs(list) do
+			for _, gui in ipairs(parent:GetChildren()) do
+				if gui:IsA("ScreenGui") and isHubGui(gui) then
+					swapOnlyHubButtons(gui)
+					paintBlack(gui)
+				end
+			end
+		end
+	end
+
+	for _ = 1, 25 do
+		pcall(process)
+		task.wait(0.25)
+	end
+end)
+
 PageShop = Main.CreatePage({ Page_Name = "Shop", Page_Title = "Shop" })
 getgenv().Options = A.Options
 SectionShopMisc = PageShop.CreateSection("Misc Shop")
@@ -13208,9 +13343,25 @@ function AutoAttackLeviathan()
 					end
 				elseif Settings["Use Click M1 Skull Guitar Leviathan"] then
 					equiptool(NameWeapon("Gun"))
-					SpamGunSkullGuitar(v.Hitbox11)
-					if t:DistanceFromCharacter(v.Hitbox11.Position) < 400 then
+					SpamGunSkullGuitar(s.Hitbox11)
+					if t:DistanceFromCharacter(s.Hitbox11.Position) < 400 then
 						UseSkillGun()
+					end
+				elseif Settings["Auto Use Dragonstorm Leviathan"] then
+					if not NameWeapon("Gun") or NameWeapon("Gun") ~= "Dragonstorm" then
+						pcall(function()
+							game:GetService("ReplicatedStorage").Remotes.CommF_
+								:InvokeServer(unpack({ [1] = "LoadItem", [2] = "Dragonstorm" }))
+						end)
+					end
+					equiptool(NameWeapon("Gun"))
+					if s:FindFirstChild("Hitbox11") then
+						SpamGunDragonStorm(s.Hitbox11)
+						if t:DistanceFromCharacter(s.Hitbox11.Position) < 400 then
+							UseSkillGun()
+						end
+					elseif s:FindFirstChild("HumanoidRootPart") then
+						SpamGunDragonStorm(s.HumanoidRootPart)
 					end
 				elseif t:DistanceFromCharacter(s.RootPart.Position) < 400 then
 					AutoUseSkillSeabeast()
@@ -13252,6 +13403,22 @@ function AutoAttackLeviathan()
 				SpamGunSkullGuitar(b.Hitbox11)
 				if t:DistanceFromCharacter(b.Hitbox11.Position) < 400 then
 					UseSkillGun()
+				end
+			elseif Settings["Auto Use Dragonstorm Leviathan"] then
+				if not NameWeapon("Gun") or NameWeapon("Gun") ~= "Dragonstorm" then
+					pcall(function()
+						game:GetService("ReplicatedStorage").Remotes.CommF_
+							:InvokeServer(unpack({ [1] = "LoadItem", [2] = "Dragonstorm" }))
+					end)
+				end
+				equiptool(NameWeapon("Gun"))
+				if b:FindFirstChild("Hitbox11") then
+					SpamGunDragonStorm(b.Hitbox11)
+					if t:DistanceFromCharacter(b.Hitbox11.Position) < 400 then
+						UseSkillGun()
+					end
+				elseif b:FindFirstChild("HumanoidRootPart") then
+					SpamGunDragonStorm(b.HumanoidRootPart)
 				end
 			elseif t:DistanceFromCharacter(b.Hitbox11.Position) < 400 then
 				AutoUseSkillSeabeast()
@@ -13385,6 +13552,16 @@ LeviathanEventSection.CreateToggle(
 	},
 	function(b)
 		SaveSettings("Use Click M1 Skull Guitar Leviathan", b)
+	end
+)
+LeviathanEventSection.CreateToggle(
+	{
+		Title = "Auto Use Dragonstorm Leviathan",
+		Desc = "Equipa Dragonstorm e atira no Leviathan",
+		Default = Settings["Auto Use Dragonstorm Leviathan"] or false,
+	},
+	function(b)
+		SaveSettings("Auto Use Dragonstorm Leviathan", b)
 	end
 )
 local b = LeviathanEventSection.CreateDropdown(
