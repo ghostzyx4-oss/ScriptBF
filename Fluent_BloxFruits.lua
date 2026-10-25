@@ -382,255 +382,463 @@ game:GetService("Players").LocalPlayer.Idled:connect(function()
 	wait(1)
 	vu:Button2Up(Vector2.new(0, 0), workspace.CurrentCamera.CFrame)
 end)
--- ===================== FLUENT UI (estilo Banana Hub antigo) =====================
-local Fluent
-do
-	local urls = {
-		"https://github.com/dawid-scripts/Fluent/releases/latest/download/main.lua",
-		"https://raw.githubusercontent.com/dawid-scripts/Fluent/master/main.lua",
-		"https://cdn.jsdelivr.net/gh/dawid-scripts/Fluent@master/main.lua",
-		"https://raw.githubusercontent.com/huyyeuemhihi/Fluent/refs/heads/main/Fluentvip.lua",
-	}
-	for _, url in ipairs(urls) do
-		local ok, res = pcall(function()
-			return loadstring(game:HttpGet(url))()
-		end)
-		if ok and type(res) == "table" and res.CreateWindow then
-			Fluent = res
-			print("[Hub] Fluent OK:", url)
-			break
-		else
-			warn("[Hub] Fluent falhou:", url, res)
+-- ===================== UI LOCAL (Fluent/Banana style - SEM HttpGet) =====================
+local function BuildLocalHubUI()
+	local Players = game:GetService("Players")
+	local UIS = game:GetService("UserInputService")
+	local TweenService = game:GetService("TweenService")
+	local lp = Players.LocalPlayer
+	local parent = game:GetService("CoreGui")
+	pcall(function()
+		if gethui then
+			parent = gethui()
 		end
-	end
-end
-if not Fluent then
-	error("[Hub] Fluent UI nao carregou (HttpGet bloqueado?).")
-end
-
-local Window = Fluent:CreateWindow({
-	Title = "Banana Cat Hub",
-	SubTitle = "Blox Fruit",
-	TabWidth = 160,
-	Size = UDim2.fromOffset(580, 460),
-	Acrylic = false,
-	Theme = "Dark",
-	MinimizeKey = Enum.KeyCode.LeftControl,
-})
-
-local Options = Fluent.Options or {}
-local A = { Options = Options }
-
-function A.CreateNoti(cfg)
-	cfg = cfg or {}
-	pcall(function()
-		Fluent:Notify({
-			Title = cfg.Title or "Banana Cat Hub",
-			Content = cfg.Desc or cfg.Content or "",
-			Duration = cfg.ShowTime or cfg.Duration or 5,
-		})
 	end)
-end
 
-local function makeSection(tab)
-	local Section = {}
-	function Section.CreateToggle(opts, cb)
-		opts = opts or {}
-		local title = opts.Title or "Toggle"
-		local def = opts.Default or false
-		local id = title
-		pcall(function()
-			tab:AddToggle(id, {
-				Title = title,
-				Description = opts.Desc or "",
-				Default = def,
-				Callback = function(v)
-					if cb then
-						pcall(cb, v)
-					end
-				end,
-			})
-		end)
-	end
-	function Section.CreateButton(opts, cb)
-		opts = opts or {}
-		pcall(function()
-			tab:AddButton({
-				Title = opts.Title or "Button",
-				Description = opts.Desc or "",
-				Callback = function()
-					if cb then
-						pcall(cb)
-					end
-				end,
-			})
-		end)
-	end
-	function Section.CreateDropdown(opts, cb)
-		opts = opts or {}
-		local list = opts.List or opts.Values or { "None" }
-		local def = opts.Default
-		local dd
-		pcall(function()
-			dd = tab:AddDropdown(opts.Title or "Dropdown", {
-				Title = opts.Title or "Dropdown",
-				Description = opts.Desc or "",
-				Values = list,
-				Default = def,
-				Multi = opts.Selected == true,
-				Callback = function(v)
-					if cb then
-						pcall(cb, v)
-					end
-				end,
-			})
-		end)
-		return {
-			GetNewList = function(_, newList)
-				pcall(function()
-					if dd and dd.SetValues then
-						dd:SetValues(newList or list)
-					end
-				end)
-			end,
-		}
-	end
-	function Section.CreateLabel(opts)
-		opts = opts or {}
-		local p
-		pcall(function()
-			p = tab:AddParagraph(opts.Title or "Label", {
-				Title = opts.Title or "",
-				Content = opts.Content or opts.Title or "",
-			})
-		end)
-		return {
-			SetText = function(_, text)
-				pcall(function()
-					if p then
-						if p.SetDesc then
-							p:SetDesc(tostring(text))
-						elseif p.Set then
-							p:Set({ Title = opts.Title or "", Content = tostring(text) })
-						end
-					end
-				end)
-			end,
-		}
-	end
-	function Section.CreateSlider(opts, cb)
-		opts = opts or {}
-		pcall(function()
-			tab:AddSlider(opts.Title or "Slider", {
-				Title = opts.Title or "Slider",
-				Description = opts.Desc or "",
-				Default = opts.Default or 0,
-				Min = opts.Min or 0,
-				Max = opts.Max or 100,
-				Rounding = opts.Precise and 1 or (opts.Rounding or 0),
-				Callback = function(v)
-					if cb then
-						pcall(cb, v)
-					end
-				end,
-			})
-		end)
-	end
-	function Section.CreateTextBox(opts, cb)
-		opts = opts or {}
-		pcall(function()
-			tab:AddInput(opts.Title or "Input", {
-				Title = opts.Title or "Input",
-				Default = opts.Default or "",
-				Placeholder = opts.Placeholder or "",
-				Callback = function(v)
-					if cb then
-						pcall(cb, v)
-					end
-				end,
-			})
-		end)
-	end
-	return Section
-end
-
-local Main = {}
-function Main.CreatePage(cfg)
-	cfg = cfg or {}
-	local name = cfg.Page_Title or cfg.Page_Name or "Tab"
-	local tab
+	-- limpa UI antiga
 	pcall(function()
-		tab = Window:AddTab({ Title = name, Icon = "rbxassetid://7733960981" })
+		for _, n in ipairs({ "BananaCatLocalUI", "BananaHubToggle", "HubFallbackUI", "HubToggleUI" }) do
+			local old = parent:FindFirstChild(n)
+			if old then old:Destroy() end
+			local pg = lp:FindFirstChild("PlayerGui")
+			if pg and pg:FindFirstChild(n) then pg[n]:Destroy() end
+		end
 	end)
-	if not tab then
-		tab = {
-			AddToggle = function() end,
-			AddButton = function() end,
-			AddDropdown = function() end,
-			AddParagraph = function() end,
-			AddSection = function() end,
-			AddSlider = function() end,
-			AddInput = function() end,
-		}
-	end
-	local Page = {}
-	function Page.CreateSection(secName)
-		pcall(function()
-			if tab.AddSection then
-				tab:AddSection(tostring(secName or "Section"))
-			end
-		end)
-		return makeSection(tab)
-	end
-	return Page
-end
 
--- Botao flutuante abrir/fechar (estilo Banana Hub)
-do
-	local CoreGui = game:GetService("CoreGui")
-	local lp = game:GetService("Players").LocalPlayer
-	local parent = CoreGui
 	local sg = Instance.new("ScreenGui")
-	sg.Name = "BananaHubToggle"
+	sg.Name = "BananaCatLocalUI"
 	sg.ResetOnSpawn = false
 	sg.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
-	sg.DisplayOrder = 999
-	pcall(function()
-		sg.Parent = parent
-	end)
-	if not sg.Parent then
-		sg.Parent = lp:WaitForChild("PlayerGui")
-	end
-	local btn = Instance.new("ImageButton")
-	btn.Name = "OpenClose"
-	btn.Size = UDim2.new(0, 50, 0, 50)
-	btn.Position = UDim2.new(0, 12, 0.4, 0)
-	btn.BackgroundColor3 = Color3.fromRGB(25, 25, 30)
-	btn.Image = "rbxassetid://7733960981" -- banana style
-	btn.ScaleType = Enum.ScaleType.Fit
-	btn.Parent = sg
-	Instance.new("UICorner", btn).CornerRadius = UDim.new(1, 0)
-	local st = Instance.new("UIStroke", btn)
-	st.Color = Color3.fromRGB(255, 200, 50)
-	st.Thickness = 1.5
-	btn.MouseButton1Click:Connect(function()
-		pcall(function()
-			if Window.Minimize then
-				Window:Minimize()
+	sg.DisplayOrder = 100
+	sg.Parent = parent
+
+	local ACCENT = Color3.fromRGB(255, 200, 50)
+	local BG = Color3.fromRGB(18, 18, 22)
+	local PANEL = Color3.fromRGB(28, 28, 34)
+	local BTN = Color3.fromRGB(40, 40, 48)
+	local TEXT = Color3.fromRGB(235, 235, 240)
+	local MUTED = Color3.fromRGB(150, 150, 160)
+
+	local main = Instance.new("Frame")
+	main.Name = "Main"
+	main.Size = UDim2.new(0, 580, 0, 420)
+	main.Position = UDim2.new(0.5, -290, 0.5, -210)
+	main.BackgroundColor3 = BG
+	main.BorderSizePixel = 0
+	main.Active = true
+	main.Draggable = true
+	main.Parent = sg
+	Instance.new("UICorner", main).CornerRadius = UDim.new(0, 10)
+	local stroke = Instance.new("UIStroke", main)
+	stroke.Color = Color3.fromRGB(60, 60, 70)
+	stroke.Thickness = 1
+
+	local titleBar = Instance.new("Frame")
+	titleBar.Size = UDim2.new(1, 0, 0, 40)
+	titleBar.BackgroundColor3 = PANEL
+	titleBar.BorderSizePixel = 0
+	titleBar.Parent = main
+	Instance.new("UICorner", titleBar).CornerRadius = UDim.new(0, 10)
+
+	local title = Instance.new("TextLabel")
+	title.Size = UDim2.new(1, -50, 1, 0)
+	title.Position = UDim2.new(0, 14, 0, 0)
+	title.BackgroundTransparency = 1
+	title.Font = Enum.Font.GothamBold
+	title.TextSize = 15
+	title.TextColor3 = ACCENT
+	title.TextXAlignment = Enum.TextXAlignment.Left
+	title.Text = "Banana Cat Hub  -  Blox Fruit"
+	title.Parent = titleBar
+
+	local closeBtn = Instance.new("TextButton")
+	closeBtn.Size = UDim2.new(0, 32, 0, 32)
+	closeBtn.Position = UDim2.new(1, -38, 0, 4)
+	closeBtn.BackgroundColor3 = BTN
+	closeBtn.Text = "—"
+	closeBtn.TextColor3 = TEXT
+	closeBtn.Font = Enum.Font.GothamBold
+	closeBtn.TextSize = 16
+	closeBtn.Parent = titleBar
+	Instance.new("UICorner", closeBtn).CornerRadius = UDim.new(0, 6)
+
+	local side = Instance.new("ScrollingFrame")
+	side.Name = "Tabs"
+	side.Size = UDim2.new(0, 150, 1, -48)
+	side.Position = UDim2.new(0, 8, 0, 44)
+	side.BackgroundColor3 = PANEL
+	side.BorderSizePixel = 0
+	side.ScrollBarThickness = 3
+	side.CanvasSize = UDim2.new(0, 0, 0, 0)
+	side.AutomaticCanvasSize = Enum.AutomaticSize.Y
+	side.Parent = main
+	Instance.new("UICorner", side).CornerRadius = UDim.new(0, 8)
+	local sideLayout = Instance.new("UIListLayout", side)
+	sideLayout.Padding = UDim.new(0, 4)
+	sideLayout.SortOrder = Enum.SortOrder.LayoutOrder
+	local sidePad = Instance.new("UIPadding", side)
+	sidePad.PaddingTop = UDim.new(0, 6)
+	sidePad.PaddingLeft = UDim.new(0, 6)
+	sidePad.PaddingRight = UDim.new(0, 6)
+
+	local content = Instance.new("ScrollingFrame")
+	content.Name = "Content"
+	content.Size = UDim2.new(1, -174, 1, -48)
+	content.Position = UDim2.new(0, 166, 0, 44)
+	content.BackgroundColor3 = PANEL
+	content.BorderSizePixel = 0
+	content.ScrollBarThickness = 4
+	content.CanvasSize = UDim2.new(0, 0, 0, 0)
+	content.AutomaticCanvasSize = Enum.AutomaticSize.Y
+	content.Parent = main
+	Instance.new("UICorner", content).CornerRadius = UDim.new(0, 8)
+	local contentLayout = Instance.new("UIListLayout", content)
+	contentLayout.Padding = UDim.new(0, 6)
+	contentLayout.SortOrder = Enum.SortOrder.LayoutOrder
+	local contentPad = Instance.new("UIPadding", content)
+	contentPad.PaddingTop = UDim.new(0, 8)
+	contentPad.PaddingLeft = UDim.new(0, 8)
+	contentPad.PaddingRight = UDim.new(0, 8)
+	contentPad.PaddingBottom = UDim.new(0, 8)
+
+	local pages = {}
+	local currentPage = nil
+	local tabOrder = 0
+
+	local function clearContent()
+		for _, c in ipairs(content:GetChildren()) do
+			if not c:IsA("UIListLayout") and not c:IsA("UIPadding") then
+				c:Destroy()
 			end
+		end
+	end
+
+	local function showPage(name)
+		currentPage = name
+		clearContent()
+		local page = pages[name]
+		if not page then return end
+		for _, el in ipairs(page.elements) do
+			el.Visible = true
+			el.Parent = content
+		end
+		for n, p in pairs(pages) do
+			if p.tabBtn then
+				p.tabBtn.BackgroundColor3 = (n == name) and ACCENT or BTN
+				p.tabBtn.TextColor3 = (n == name) and Color3.fromRGB(20, 20, 20) or TEXT
+			end
+		end
+	end
+
+	local function makeToggle(parentList, opts, cb)
+		opts = opts or {}
+		local row = Instance.new("Frame")
+		row.Size = UDim2.new(1, -4, 0, 36)
+		row.BackgroundColor3 = BTN
+		row.BorderSizePixel = 0
+		Instance.new("UICorner", row).CornerRadius = UDim.new(0, 6)
+		local lbl = Instance.new("TextLabel")
+		lbl.Size = UDim2.new(1, -60, 1, 0)
+		lbl.Position = UDim2.new(0, 10, 0, 0)
+		lbl.BackgroundTransparency = 1
+		lbl.Font = Enum.Font.Gotham
+		lbl.TextSize = 13
+		lbl.TextColor3 = TEXT
+		lbl.TextXAlignment = Enum.TextXAlignment.Left
+		lbl.Text = opts.Title or "Toggle"
+		lbl.Parent = row
+		local state = opts.Default and true or false
+		local box = Instance.new("TextButton")
+		box.Size = UDim2.new(0, 40, 0, 22)
+		box.Position = UDim2.new(1, -48, 0.5, -11)
+		box.BackgroundColor3 = state and ACCENT or Color3.fromRGB(60, 60, 70)
+		box.Text = ""
+		box.Parent = row
+		Instance.new("UICorner", box).CornerRadius = UDim.new(1, 0)
+		box.MouseButton1Click:Connect(function()
+			state = not state
+			box.BackgroundColor3 = state and ACCENT or Color3.fromRGB(60, 60, 70)
+			if cb then pcall(cb, state) end
 		end)
+		table.insert(parentList, row)
+		return row
+	end
+
+	local function makeButton(parentList, opts, cb)
+		opts = opts or {}
+		local b = Instance.new("TextButton")
+		b.Size = UDim2.new(1, -4, 0, 32)
+		b.BackgroundColor3 = BTN
+		b.Text = opts.Title or "Button"
+		b.Font = Enum.Font.GothamBold
+		b.TextSize = 13
+		b.TextColor3 = TEXT
+		b.BorderSizePixel = 0
+		Instance.new("UICorner", b).CornerRadius = UDim.new(0, 6)
+		b.MouseButton1Click:Connect(function()
+			if cb then pcall(cb) end
+		end)
+		table.insert(parentList, b)
+		return b
+	end
+
+	local function makeLabel(parentList, opts)
+		opts = opts or {}
+		local l = Instance.new("TextLabel")
+		l.Size = UDim2.new(1, -4, 0, 24)
+		l.BackgroundTransparency = 1
+		l.Font = Enum.Font.Gotham
+		l.TextSize = 12
+		l.TextColor3 = MUTED
+		l.TextXAlignment = Enum.TextXAlignment.Left
+		l.Text = opts.Title or ""
+		table.insert(parentList, l)
+		return {
+			SetText = function(_, text)
+				l.Text = tostring(text)
+			end,
+			_label = l,
+		}
+	end
+
+	local function makeDropdown(parentList, opts, cb)
+		opts = opts or {}
+		local list = opts.List or { "None" }
+		local current = opts.Default or list[1]
+		local row = Instance.new("Frame")
+		row.Size = UDim2.new(1, -4, 0, 36)
+		row.BackgroundColor3 = BTN
+		row.BorderSizePixel = 0
+		Instance.new("UICorner", row).CornerRadius = UDim.new(0, 6)
+		local lbl = Instance.new("TextLabel")
+		lbl.Size = UDim2.new(0.45, 0, 1, 0)
+		lbl.Position = UDim2.new(0, 10, 0, 0)
+		lbl.BackgroundTransparency = 1
+		lbl.Font = Enum.Font.Gotham
+		lbl.TextSize = 12
+		lbl.TextColor3 = TEXT
+		lbl.TextXAlignment = Enum.TextXAlignment.Left
+		lbl.Text = opts.Title or "Select"
+		lbl.Parent = row
+		local btn = Instance.new("TextButton")
+		btn.Size = UDim2.new(0.5, -14, 0, 24)
+		btn.Position = UDim2.new(0.5, 0, 0.5, -12)
+		btn.BackgroundColor3 = PANEL
+		btn.Text = tostring(current or "...")
+		btn.Font = Enum.Font.Gotham
+		btn.TextSize = 12
+		btn.TextColor3 = ACCENT
+		btn.Parent = row
+		Instance.new("UICorner", btn).CornerRadius = UDim.new(0, 4)
+		local idx = 1
+		for i, v in ipairs(list) do
+			if v == current then idx = i break end
+		end
+		btn.MouseButton1Click:Connect(function()
+			if #list == 0 then return end
+			idx = idx % #list + 1
+			current = list[idx]
+			btn.Text = tostring(current)
+			if cb then pcall(cb, current) end
+		end)
+		table.insert(parentList, row)
+		return {
+			GetNewList = function(_, newList)
+				list = newList or list
+				idx = 1
+				current = list[1]
+				btn.Text = tostring(current or "...")
+			end,
+		}
+	end
+
+	local function makeSlider(parentList, opts, cb)
+		opts = opts or {}
+		local min, max = opts.Min or 0, opts.Max or 100
+		local val = opts.Default or min
+		local row = Instance.new("Frame")
+		row.Size = UDim2.new(1, -4, 0, 40)
+		row.BackgroundColor3 = BTN
+		row.BorderSizePixel = 0
+		Instance.new("UICorner", row).CornerRadius = UDim.new(0, 6)
+		local lbl = Instance.new("TextLabel")
+		lbl.Size = UDim2.new(1, -10, 0, 18)
+		lbl.Position = UDim2.new(0, 8, 0, 2)
+		lbl.BackgroundTransparency = 1
+		lbl.Font = Enum.Font.Gotham
+		lbl.TextSize = 12
+		lbl.TextColor3 = TEXT
+		lbl.TextXAlignment = Enum.TextXAlignment.Left
+		lbl.Text = (opts.Title or "Slider") .. ": " .. tostring(val)
+		lbl.Parent = row
+		local btn = Instance.new("TextButton")
+		btn.Size = UDim2.new(1, -16, 0, 14)
+		btn.Position = UDim2.new(0, 8, 0, 22)
+		btn.BackgroundColor3 = PANEL
+		btn.Text = ""
+		btn.Parent = row
+		Instance.new("UICorner", btn).CornerRadius = UDim.new(1, 0)
+		btn.MouseButton1Click:Connect(function()
+			val = val + (max - min) / 10
+			if val > max then val = min end
+			if opts.Precise then val = math.floor(val * 10) / 10 else val = math.floor(val) end
+			lbl.Text = (opts.Title or "Slider") .. ": " .. tostring(val)
+			if cb then pcall(cb, val) end
+		end)
+		table.insert(parentList, row)
+	end
+
+	local function makeSectionHeader(parentList, name)
+		local h = Instance.new("TextLabel")
+		h.Size = UDim2.new(1, -4, 0, 22)
+		h.BackgroundTransparency = 1
+		h.Font = Enum.Font.GothamBold
+		h.TextSize = 13
+		h.TextColor3 = ACCENT
+		h.TextXAlignment = Enum.TextXAlignment.Left
+		h.Text = tostring(name or "Section")
+		table.insert(parentList, h)
+	end
+
+	local MainAPI = {}
+	function MainAPI.CreatePage(cfg)
+		cfg = cfg or {}
+		local name = cfg.Page_Title or cfg.Page_Name or ("Tab" .. tostring(tabOrder))
+		tabOrder = tabOrder + 1
+		local elements = {}
+		local tabBtn = Instance.new("TextButton")
+		tabBtn.Size = UDim2.new(1, 0, 0, 30)
+		tabBtn.BackgroundColor3 = BTN
+		tabBtn.Text = name
+		tabBtn.Font = Enum.Font.Gotham
+		tabBtn.TextSize = 12
+		tabBtn.TextColor3 = TEXT
+		tabBtn.BorderSizePixel = 0
+		tabBtn.LayoutOrder = tabOrder
+		tabBtn.Parent = side
+		Instance.new("UICorner", tabBtn).CornerRadius = UDim.new(0, 6)
+		pages[name] = { elements = elements, tabBtn = tabBtn }
+		tabBtn.MouseButton1Click:Connect(function()
+			showPage(name)
+		end)
+		if not currentPage then
+			task.defer(function() showPage(name) end)
+		end
+		local Page = {}
+		function Page.CreateSection(secName)
+			makeSectionHeader(elements, secName)
+			local Section = {}
+			function Section.CreateToggle(opts, cb)
+				makeToggle(elements, opts, cb)
+			end
+			function Section.CreateButton(opts, cb)
+				makeButton(elements, opts, cb)
+			end
+			function Section.CreateDropdown(opts, cb)
+				return makeDropdown(elements, opts, cb)
+			end
+			function Section.CreateLabel(opts)
+				return makeLabel(elements, opts)
+			end
+			function Section.CreateSlider(opts, cb)
+				makeSlider(elements, opts, cb)
+			end
+			function Section.CreateTextBox(opts, cb)
+				makeButton(elements, { Title = (opts and opts.Title) or "Input" }, function()
+					if cb then pcall(cb, opts and opts.Default or "") end
+				end)
+			end
+			return Section
+		end
+		return Page
+	end
+
+	local visible = true
+	local function setVisible(v)
+		visible = v
+		main.Visible = v
+	end
+	closeBtn.MouseButton1Click:Connect(function()
+		setVisible(false)
 	end)
+
+	-- botao flutuante banana
+	local toggleSg = Instance.new("ScreenGui")
+	toggleSg.Name = "BananaHubToggle"
+	toggleSg.ResetOnSpawn = false
+	toggleSg.DisplayOrder = 101
+	toggleSg.Parent = parent
+	local fab = Instance.new("ImageButton")
+	fab.Size = UDim2.new(0, 50, 0, 50)
+	fab.Position = UDim2.new(0, 12, 0.4, 0)
+	fab.BackgroundColor3 = Color3.fromRGB(25, 25, 30)
+	fab.Image = "rbxassetid://7733960981"
+	fab.ScaleType = Enum.ScaleType.Fit
+	fab.Parent = toggleSg
+	Instance.new("UICorner", fab).CornerRadius = UDim.new(1, 0)
+	local fabStroke = Instance.new("UIStroke", fab)
+	fabStroke.Color = ACCENT
+	fabStroke.Thickness = 1.5
+	fab.MouseButton1Click:Connect(function()
+		setVisible(not visible)
+	end)
+	UIS.InputBegan:Connect(function(input, gpe)
+		if gpe then return end
+		if input.KeyCode == Enum.KeyCode.LeftControl then
+			setVisible(not visible)
+		end
+	end)
+
+	local A = {
+		Options = {},
+		CreateNoti = function(cfg)
+			cfg = cfg or {}
+			print("[Hub]", cfg.Title or "", cfg.Desc or cfg.Content or "")
+		end,
+		CreateMain = function()
+			return MainAPI
+		end,
+	}
+	return A, MainAPI
 end
 
-pcall(function()
-	Fluent:Notify({
-		Title = "Banana Cat Hub",
-		Content = "Fluent UI carregada",
-		Duration = 4,
-	})
+local A, Main
+local okUI, errUI = pcall(function()
+	A, Main = BuildLocalHubUI()
 end)
-
-print("[Hub] Fluent Banana Hub pronta")
+if not okUI or not Main then
+	warn("[Hub] UI local falhou:", errUI)
+	-- ultimo recurso
+	A = {
+		Options = {},
+		CreateNoti = function() end,
+		CreateMain = function()
+			return {
+				CreatePage = function()
+					return {
+						CreateSection = function()
+							return {
+								CreateToggle = function() end,
+								CreateButton = function() end,
+								CreateDropdown = function()
+									return { GetNewList = function() end }
+								end,
+								CreateLabel = function()
+									return { SetText = function() end }
+								end,
+								CreateSlider = function() end,
+								CreateTextBox = function() end,
+							}
+						end,
+					}
+				end,
+			}
+		end,
+	}
+	Main = A.CreateMain()
+else
+	print("[Hub] UI local Banana/Fluent pronta")
+end
 
 PageShop = Main.CreatePage({ Page_Name = "Shop", Page_Title = "Shop" })
 getgenv().Options = A.Options
