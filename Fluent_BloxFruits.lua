@@ -5450,6 +5450,85 @@ getgenv().AttackFunctionnhungSuperTrial = function()
 	table.clear(G)
 end
 getgenv().AttackFunctionnhungSuper = getgenv().AttackFunctionnhungSuperTrial
+
+-- Fast Attack para GUN (Dragonstorm / qualquer arma Gun)
+getgenv().FastAttackGun = function(targetPart)
+	if not targetPart then
+		return
+	end
+	if typeof(targetPart) == "Instance" and not targetPart:IsA("BasePart") then
+		targetPart = targetPart:FindFirstChild("HumanoidRootPart")
+			or targetPart:FindFirstChild("Hitbox11")
+			or targetPart.PrimaryPart
+			or targetPart:FindFirstChildWhichIsA("BasePart")
+	end
+	if not targetPart or not targetPart:IsA("BasePart") then
+		return
+	end
+	local char = t.Character
+	if not char then
+		return
+	end
+	local gunName = NameWeapon("Gun")
+	local gun = gunName and char:FindFirstChild(gunName)
+	if not gun then
+		-- tenta Dragonstorm
+		if getgenv().EnsureDragonstorm then
+			gun = getgenv().EnsureDragonstorm()
+			gunName = gun and gun.Name
+		end
+	end
+	if not gun then
+		return
+	end
+	-- Skull Guitar usa remote TAP
+	if gunName == "Skull Guitar" or gun.Name == "Skull Guitar" then
+		pcall(function()
+			gun.RemoteEvent:FireServer("TAP", targetPart.Position)
+		end)
+		return
+	end
+	-- pula IsGunReloading / cooldown quando Fast Attack Gun ativo
+	pcall(function()
+		local l = getupvalues(require(game:GetService("ReplicatedStorage").Controllers.CombatController).Attack)[9]
+		local Q, d2, I, _, o, V, N =
+			debug.getupvalue(l, 15),
+			debug.getupvalue(l, 13),
+			debug.getupvalue(l, 16),
+			debug.getupvalue(l, 17),
+			debug.getupvalue(l, 14),
+			debug.getupvalue(l, 12),
+			debug.getupvalue(l, 18)
+		local y = V * d2
+		local P = ((o * d2 + V * Q) % I * I + y) % _
+		o = math.floor(P / I)
+		V = P - o * I
+		N += 1
+		debug.setupvalue(l, 15, Q)
+		debug.setupvalue(l, 13, d2)
+		debug.setupvalue(l, 16, I)
+		debug.setupvalue(l, 17, _)
+		debug.setupvalue(l, 14, o)
+		debug.setupvalue(l, 12, V)
+		debug.setupvalue(l, 18, N)
+		game.ReplicatedStorage.Remotes.Validator2:FireServer(math.floor(P / _ * 16777215), N)
+	end)
+	pcall(function()
+		local remote = game:GetService("ReplicatedStorage").Modules.Net:FindFirstChild("RE/ShootGunEvent")
+		if remote then
+			if gunName == "Cannon" then
+				remote:FireServer(targetPart)
+			else
+				remote:FireServer(targetPart.Position, { targetPart })
+			end
+		end
+	end)
+	pcall(function()
+		if gun:IsA("Tool") then
+			gun:Activate()
+		end
+	end)
+end
 local G = require(game:GetService("ReplicatedStorage").Mouse)
 v_u_50 = nil
 v_u_51 = 1
@@ -5691,6 +5770,11 @@ getgenv().SpamGunDragonStorm = function(E)
 		debug.setupvalue(l, 18, N)
 		game.ReplicatedStorage.Remotes.Validator2:FireServer(math.floor(P / _ * 16777215), N)
 	end)
+	-- Fast Attack Gun: spam sem cooldown
+	if Settings["Fast Attack Gun"] ~= false and getgenv().FastAttackGun then
+		getgenv().FastAttackGun(part)
+		return
+	end
 	-- tiro (mesmo formato do ShootM1)
 	pcall(function()
 		local remote = game:GetService("ReplicatedStorage").Modules.Net:FindFirstChild("RE/ShootGunEvent")
@@ -5746,13 +5830,13 @@ function ShootM1(E)
 						:FindFirstChild("RE/ShootGunEvent")
 						:FireServer(unpack(_))
 				end
-				task.wait(t.Character[NameWeapon("Gun")].Cooldown.Value)
+				if Settings["Fast Attack Gun"] == false then task.wait(t.Character[NameWeapon("Gun")].Cooldown.Value) else task.wait(0.05) end
 			else
 				local l = { [1] = "TAP", [2] = E.HumanoidRootPart.Position }
 				game:GetService("Players").LocalPlayer.Character
 					:FindFirstChild("Skull Guitar").RemoteEvent
 					:FireServer(unpack(l))
-				task.wait(t.Character[NameWeapon("Gun")].Cooldown.Value)
+				if Settings["Fast Attack Gun"] == false then task.wait(t.Character[NameWeapon("Gun")].Cooldown.Value) else task.wait(0.05) end
 			end
 		end
 	end)
@@ -6008,7 +6092,7 @@ local Q, d =
 	SettingFarmMainSection.CreateDropdown(
 		{
 			Title = "Select Weapon",
-			List = { "Melee", "Sword", "Blox Fruit" },
+			List = { "Melee", "Sword", "Blox Fruit", "Gun" },
 			Search = true,
 			Selected = false,
 			Default = Settings["Select Weapon"] or nil,
@@ -6021,6 +6105,16 @@ SettingFarmMainSection.CreateToggle(
 	{ Title = "Attack No Animation ", Desc = nil, Default = Settings["Attack No Animation "] or true },
 	function(I)
 		SaveSettings("Attack No Animation ", I)
+	end
+)
+SettingFarmMainSection.CreateToggle(
+	{
+		Title = "Fast Attack Gun",
+		Desc = "Tiro rapido com Gun / Dragonstorm (sem esperar cooldown)",
+		Default = Settings["Fast Attack Gun"] if Settings["Fast Attack Gun"] ~= nil else true,
+	},
+	function(I)
+		SaveSettings("Fast Attack Gun", I)
 	end
 )
 SettingFarmMainSection.CreateToggle(
@@ -6101,10 +6195,14 @@ SettingFarmMainSection.CreateToggle(
 							end
 						end
 						if nearest then
-							SpamGunDragonStorm(nearest)
+							if Settings["Fast Attack Gun"] ~= false and getgenv().FastAttackGun then
+								getgenv().FastAttackGun(nearest)
+							else
+								SpamGunDragonStorm(nearest)
+							end
 						end
 					end)
-					task.wait(0.12)
+					task.wait(Settings["Fast Attack Gun"] == false and 0.2 or 0.05)
 				end
 			end)
 		end
