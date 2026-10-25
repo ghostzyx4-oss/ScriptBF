@@ -1,4 +1,11 @@
+-- permite recarregar a UI (antes travava se ja tivesse rodado)
+if getgenv().__BF_FORCE_RELOAD then
+	getgenv().__BF_LOADED = nil
+	getgenv().__BF_RESULT = nil
+	getgenv().__BF_FORCE_RELOAD = nil
+end
 if getgenv().__BF_LOADED then
+	warn("[Hub] Script ja carregado. Use getgenv().__BF_FORCE_RELOAD = true e rode de novo.")
 	return getgenv().__BF_RESULT
 end
 
@@ -375,9 +382,80 @@ game:GetService("Players").LocalPlayer.Idled:connect(function()
 	wait(1)
 	vu:Button2Up(Vector2.new(0, 0), workspace.CurrentCamera.CFrame)
 end)
-local A =
-	loadstring(game:HttpGet("https://raw.githubusercontent.com/obiiyeuem/vthangsitink/refs/heads/main/zzzz.lua"))()
+local A
+do
+	local urls = {
+		"https://raw.githubusercontent.com/obiiyeuem/vthangsitink/refs/heads/main/zzzz.lua",
+		"https://cdn.jsdelivr.net/gh/obiiyeuem/vthangsitink@main/zzzz.lua",
+	}
+	for _, url in ipairs(urls) do
+		local ok, res = pcall(function()
+			return loadstring(game:HttpGet(url))()
+		end)
+		if ok and type(res) == "table" and res.CreateMain then
+			A = res
+			print("[Hub] UI library OK:", url)
+			break
+		else
+			warn("[Hub] UI library falhou:", url, res)
+		end
+	end
+end
+if not A then
+	warn("[Hub] Banana UI (zzzz) falhou — fallback simples")
+	-- fallback minimo para nao ficar sem interface
+	local CoreGui = game:GetService("CoreGui")
+	local sg = Instance.new("ScreenGui")
+	sg.Name = "HubFallbackUI"
+	sg.ResetOnSpawn = false
+	sg.Parent = CoreGui
+	local f = Instance.new("Frame")
+	f.Size = UDim2.new(0, 320, 0, 160)
+	f.Position = UDim2.new(0.5, -160, 0.2, 0)
+	f.BackgroundColor3 = Color3.fromRGB(20, 20, 20)
+	f.Parent = sg
+	Instance.new("UICorner", f).CornerRadius = UDim.new(0, 10)
+	local tlabel = Instance.new("TextLabel")
+	tlabel.Size = UDim2.new(1, -20, 1, -20)
+	tlabel.Position = UDim2.new(0, 10, 0, 10)
+	tlabel.BackgroundTransparency = 1
+	tlabel.TextColor3 = Color3.fromRGB(255, 255, 255)
+	tlabel.TextWrapped = true
+	tlabel.Font = Enum.Font.GothamBold
+	tlabel.TextSize = 14
+	tlabel.Text = "UI Banana (zzzz.lua) nao carregou.\nExecutor bloqueou HttpGet.\nTente outro executor ou libere HTTP."
+	tlabel.Parent = f
+	A = {
+		CreateMain = function()
+			return {
+				CreatePage = function()
+					return {
+						CreateSection = function()
+							return {
+								CreateToggle = function() end,
+								CreateButton = function() end,
+								CreateDropdown = function()
+									return { GetNewList = function() end }
+								end,
+								CreateLabel = function()
+									return { SetText = function() end }
+								end,
+								CreateSlider = function() end,
+								CreateTextBox = function() end,
+							}
+						end,
+					}
+				end,
+			}
+		end,
+		Options = {},
+		CreateNoti = function() end,
+	}
+end
 Main = guardUI(A.CreateMain({ Title = "Blox Fruit", Desc = " - Blox Fruit" }), "Main")
+pcall(function()
+	print("[Hub] Main UI criada")
+end)
 PageShop = Main.CreatePage({ Page_Name = "Shop", Page_Title = "Shop" })
 getgenv().Options = A.Options
 SectionShopMisc = PageShop.CreateSection("Misc Shop")
