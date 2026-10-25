@@ -5548,35 +5548,101 @@ getgenv().ClickM1Volcano = function(E, l)
 	AttackFunction(l and 80 or 30)
 end
 local m = L:WaitForChild("Modules")
+getgenv().EnsureDragonstorm = function()
+	local char = t.Character
+	if not char then
+		return nil
+	end
+	local gun = char:FindFirstChild("Dragonstorm")
+	if gun then
+		return gun
+	end
+	-- carrega do inventario se a arma atual nao for Dragonstorm
+	local current = NameWeapon("Gun")
+	if current ~= "Dragonstorm" then
+		pcall(function()
+			game:GetService("ReplicatedStorage").Remotes.CommF_
+				:InvokeServer(unpack({ [1] = "LoadItem", [2] = "Dragonstorm" }))
+		end)
+		task.wait(0.2)
+	end
+	pcall(function()
+		equiptool("Dragonstorm")
+	end)
+	if not char:FindFirstChild("Dragonstorm") then
+		local nm = NameWeapon("Gun")
+		if nm then
+			pcall(function()
+				equiptool(nm)
+			end)
+		end
+	end
+	task.wait(0.05)
+	return char:FindFirstChild("Dragonstorm")
+end
 getgenv().SpamGunDragonStorm = function(E)
-	local l, Q = require(m.CombatUtil), t.Character
-	local d = Q and (Q:FindFirstChild("Dragonstorm"))
-	if not d or (l:IsGunReloading(d)) then
+	if not E then
 		return
 	end
-	l = getupvalues(require(L.Controllers.CombatController).Attack)[9]
-	local I, _, o, V, N, y, P =
-		debug.getupvalue(l, 15),
-		debug.getupvalue(l, 13),
-		debug.getupvalue(l, 16),
-		debug.getupvalue(l, 17),
-		debug.getupvalue(l, 14),
-		debug.getupvalue(l, 12),
-		debug.getupvalue(l, 18)
-	Q = y * _
-	d = ((N * _ + y * I) % o * o + Q) % V
-	N = math.floor(d / o)
-	y = d - N * o
-	P += 1
-	debug.setupvalue(l, 15, I)
-	debug.setupvalue(l, 13, _)
-	debug.setupvalue(l, 16, o)
-	debug.setupvalue(l, 17, V)
-	debug.setupvalue(l, 14, N)
-	debug.setupvalue(l, 12, y)
-	debug.setupvalue(l, 18, P)
-	L.Remotes.Validator2:FireServer(math.floor(d / V * 16777215), P)
-	m.Net:FindFirstChild("RE/ShootGunEvent"):FireServer(E.Position, { E })
+	local part = E
+	if typeof(E) == "Instance" then
+		if E:IsA("Model") then
+			part = E:FindFirstChild("Hitbox11")
+				or E:FindFirstChild("HumanoidRootPart")
+				or E.PrimaryPart
+				or E:FindFirstChildWhichIsA("BasePart")
+		elseif not E:IsA("BasePart") then
+			part = E:FindFirstChild("Hitbox11")
+				or E:FindFirstChild("HumanoidRootPart")
+				or E:FindFirstChildWhichIsA("BasePart")
+		end
+	end
+	if not part or not part:IsA("BasePart") then
+		return
+	end
+	local char = t.Character
+	if not char then
+		return
+	end
+	local d = char:FindFirstChild("Dragonstorm") or getgenv().EnsureDragonstorm()
+	if not d then
+		return
+	end
+	pcall(function()
+		local cu = require(m.CombatUtil)
+		if cu:IsGunReloading(d) then
+			return
+		end
+	end)
+	-- validator (alguns executors falham no getupvalue — cai no fallback)
+	local ok = pcall(function()
+		local attackFn = require(L.Controllers.CombatController).Attack
+		local l = getupvalues(attackFn)[9]
+		local I, _, o, V, N, y, P =
+			debug.getupvalue(l, 15),
+			debug.getupvalue(l, 13),
+			debug.getupvalue(l, 16),
+			debug.getupvalue(l, 17),
+			debug.getupvalue(l, 14),
+			debug.getupvalue(l, 12),
+			debug.getupvalue(l, 18)
+		local Q = y * _
+		local dval = ((N * _ + y * I) % o * o + Q) % V
+		N = math.floor(dval / o)
+		y = dval - N * o
+		P += 1
+		debug.setupvalue(l, 15, I)
+		debug.setupvalue(l, 13, _)
+		debug.setupvalue(l, 16, o)
+		debug.setupvalue(l, 17, V)
+		debug.setupvalue(l, 14, N)
+		debug.setupvalue(l, 12, y)
+		debug.setupvalue(l, 18, P)
+		L.Remotes.Validator2:FireServer(math.floor(dval / V * 16777215), P)
+	end)
+	pcall(function()
+		m.Net:FindFirstChild("RE/ShootGunEvent"):FireServer(part.Position, { part })
+	end)
 end
 function ShootM1(E)
 	spawn(function()
@@ -12127,13 +12193,7 @@ function AutoSeabeast()
 			TeleportSeaEvents(b)
 			if b:FindFirstChildWhichIsA("Humanoid") then
 				if Settings["Use Dragonstorm For Sea Event"] then
-					if Settings["Auto Change Dragonstorm With Skull Guitar"] then
-						if not NameWeapon("Gun") or NameWeapon("Gun") ~= "Dragonstorm" then
-							game:GetService("ReplicatedStorage").Remotes.CommF_
-								:InvokeServer(unpack({ [1] = "LoadItem", [2] = "Dragonstorm" }))
-						end
-					end
-					equiptool(NameWeapon("Gun"))
+					getgenv().EnsureDragonstorm()
 					SpamGunDragonStorm(b.HumanoidRootPart)
 					if t:DistanceFromCharacter(b.HumanoidRootPart.Position) < 400 then
 						UseSkillGun()
@@ -12162,13 +12222,7 @@ function AutoSeabeast()
 						)
 					end
 					if Settings["Use Dragonstorm For Sea Event"] and b.Name ~= "SeaBeast1" then
-						if Settings["Auto Change Dragonstorm With Skull Guitar"] then
-							if not NameWeapon("Gun") or NameWeapon("Gun") ~= "Dragonstorm" then
-								game:GetService("ReplicatedStorage").Remotes.CommF_
-									:InvokeServer(unpack({ [1] = "LoadItem", [2] = "Dragonstorm" }))
-							end
-						end
-						equiptool(NameWeapon("Gun"))
+						getgenv().EnsureDragonstorm()
 						SpamGunDragonStorm(X)
 						if t:DistanceFromCharacter(X.Position) < 400 then
 							UseSkillGun()
@@ -12191,11 +12245,7 @@ function AutoSeabeast()
 						and b.Health.Value > 0
 						and (b:FindFirstChild("Engine"))
 					then
-						if not NameWeapon("Gun") or NameWeapon("Gun") ~= "Dragonstorm" then
-							game:GetService("ReplicatedStorage").Remotes.CommF_
-								:InvokeServer(unpack({ [1] = "LoadItem", [2] = "Dragonstorm" }))
-						end
-						equiptool(NameWeapon("Gun"))
+						getgenv().EnsureDragonstorm()
 						SpamGunDragonStorm(X)
 						if t:DistanceFromCharacter(X.Position) < 400 then
 							UseSkillGun()
@@ -12894,13 +12944,7 @@ function DestroyIDK()
 				end)
 				if s:FindFirstChildWhichIsA("Humanoid") then
 					if Settings["Use Dragonstorm For Sea Event"] then
-						if Settings["Auto Change Dragonstorm With Skull Guitar"] then
-							if not NameWeapon("Gun") or NameWeapon("Gun") ~= "Dragonstorm" then
-								game:GetService("ReplicatedStorage").Remotes.CommF_
-									:InvokeServer(unpack({ [1] = "LoadItem", [2] = "Dragonstorm" }))
-							end
-						end
-						equiptool(NameWeapon("Gun"))
+						getgenv().EnsureDragonstorm()
 						SpamGunDragonStorm(s.HumanoidRootPart)
 						if t:DistanceFromCharacter(s.HumanoidRootPart.Position) < 400 then
 							UseSkillGun()
@@ -12928,13 +12972,7 @@ function DestroyIDK()
 						)
 					end
 					if Settings["Use Dragonstorm For Sea Event"] and s.Name ~= "SeaBeast1" then
-						if Settings["Auto Change Dragonstorm With Skull Guitar"] then
-							if not NameWeapon("Gun") or NameWeapon("Gun") ~= "Dragonstorm" then
-								game:GetService("ReplicatedStorage").Remotes.CommF_
-									:InvokeServer(unpack({ [1] = "LoadItem", [2] = "Dragonstorm" }))
-							end
-						end
-						equiptool(NameWeapon("Gun"))
+						getgenv().EnsureDragonstorm()
 						SpamGunDragonStorm(g)
 						if t:DistanceFromCharacter(g.Position) < 400 then
 							UseSkillGun()
@@ -13213,13 +13251,7 @@ function AutoAttackLeviathan()
 						UseSkillGun()
 					end
 				elseif Settings["Auto Use Dragonstorm Leviathan"] then
-					if not NameWeapon("Gun") or NameWeapon("Gun") ~= "Dragonstorm" then
-						pcall(function()
-							game:GetService("ReplicatedStorage").Remotes.CommF_
-								:InvokeServer(unpack({ [1] = "LoadItem", [2] = "Dragonstorm" }))
-						end)
-					end
-					equiptool(NameWeapon("Gun"))
+					getgenv().EnsureDragonstorm()
 					if s:FindFirstChild("Hitbox11") then
 						SpamGunDragonStorm(s.Hitbox11)
 						if t:DistanceFromCharacter(s.Hitbox11.Position) < 400 then
@@ -13227,6 +13259,8 @@ function AutoAttackLeviathan()
 						end
 					elseif s:FindFirstChild("HumanoidRootPart") then
 						SpamGunDragonStorm(s.HumanoidRootPart)
+					else
+						SpamGunDragonStorm(s)
 					end
 				elseif t:DistanceFromCharacter(s.RootPart.Position) < 400 then
 					AutoUseSkillSeabeast()
@@ -13270,13 +13304,7 @@ function AutoAttackLeviathan()
 					UseSkillGun()
 				end
 			elseif Settings["Auto Use Dragonstorm Leviathan"] then
-				if not NameWeapon("Gun") or NameWeapon("Gun") ~= "Dragonstorm" then
-					pcall(function()
-						game:GetService("ReplicatedStorage").Remotes.CommF_
-							:InvokeServer(unpack({ [1] = "LoadItem", [2] = "Dragonstorm" }))
-					end)
-				end
-				equiptool(NameWeapon("Gun"))
+				getgenv().EnsureDragonstorm()
 				if b:FindFirstChild("Hitbox11") then
 					SpamGunDragonStorm(b.Hitbox11)
 					if t:DistanceFromCharacter(b.Hitbox11.Position) < 400 then
@@ -13284,6 +13312,8 @@ function AutoAttackLeviathan()
 					end
 				elseif b:FindFirstChild("HumanoidRootPart") then
 					SpamGunDragonStorm(b.HumanoidRootPart)
+				else
+					SpamGunDragonStorm(b)
 				end
 			elseif t:DistanceFromCharacter(b.Hitbox11.Position) < 400 then
 				AutoUseSkillSeabeast()
