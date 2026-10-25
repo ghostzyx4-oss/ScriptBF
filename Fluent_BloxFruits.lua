@@ -5253,9 +5253,21 @@ spawn(function()
 	end
 end)
 function equiptool(g)
-	if g and (t:FindFirstChild("Backpack")) and (t.Backpack:FindFirstChild(g)) and not t.Character.Humanoid.Sit then
-		t.Character.Humanoid:EquipTool(t.Backpack:FindFirstChild(g))
+	if not g or not t:FindFirstChild("Backpack") or not t.Character then
+		return
 	end
+	local tool = t.Backpack:FindFirstChild(g)
+	if not tool then
+		return
+	end
+	local hum = t.Character:FindFirstChildOfClass("Humanoid")
+	if not hum then
+		return
+	end
+	-- permite equipar sentado (barco / sea event) — antes bloqueava e quebrava Dragonstorm
+	pcall(function()
+		hum:EquipTool(tool)
+	end)
 end
 function HoldDelay(key, toolName)
 	local tool = t.Character and t.Character:FindFirstChild(toolName)
@@ -5515,6 +5527,14 @@ local function m(E)
 		and (t.Character.HumanoidRootPart.Position - E.HumanoidRootPart.Position).Magnitude < 70
 end
 getgenv().ClickM1 = function(E, l)
+	if Settings["Kill Aura With DragonStorm"] or (Settings["Select Weapon"] == "Gun" and t.Character and (t.Character:FindFirstChild("Dragonstorm") or (t.Backpack and t.Backpack:FindFirstChild("Dragonstorm")))) then
+		pcall(function()
+			getgenv().EnsureDragonstorm()
+			if E then
+				SpamGunDragonStorm(E)
+			end
+		end)
+	end
 	if not m(E) then
 		return
 	end
@@ -5553,32 +5573,47 @@ getgenv().EnsureDragonstorm = function()
 	if not char then
 		return nil
 	end
-	local gun = char:FindFirstChild("Dragonstorm")
+	local hum = char:FindFirstChildOfClass("Humanoid")
+	local function findGun(container)
+		if not container then
+			return nil
+		end
+		local g = container:FindFirstChild("Dragonstorm")
+		if g then
+			return g
+		end
+		-- nomes alternativos
+		for _, child in ipairs(container:GetChildren()) do
+			if child:IsA("Tool") then
+				local n = string.lower(child.Name)
+				if n:find("dragonstorm") or n:find("dragon storm") then
+					return child
+				end
+			end
+		end
+		return nil
+	end
+	local gun = findGun(char)
 	if gun then
 		return gun
 	end
-	-- carrega do inventario se a arma atual nao for Dragonstorm
-	local current = NameWeapon("Gun")
-	if current ~= "Dragonstorm" then
+	gun = findGun(t:FindFirstChild("Backpack"))
+	if not gun then
 		pcall(function()
 			game:GetService("ReplicatedStorage").Remotes.CommF_
 				:InvokeServer(unpack({ [1] = "LoadItem", [2] = "Dragonstorm" }))
 		end)
-		task.wait(0.2)
+		task.wait(0.25)
+		gun = findGun(t:FindFirstChild("Backpack")) or findGun(char)
 	end
-	pcall(function()
-		equiptool("Dragonstorm")
-	end)
-	if not char:FindFirstChild("Dragonstorm") then
-		local nm = NameWeapon("Gun")
-		if nm then
-			pcall(function()
-				equiptool(nm)
-			end)
-		end
+	if gun and hum then
+		-- equiptool original IGNORA se estiver sentado (barco) — aqui equipa sempre
+		pcall(function()
+			hum:EquipTool(gun)
+		end)
+		task.wait(0.1)
 	end
-	task.wait(0.05)
-	return char:FindFirstChild("Dragonstorm")
+	return findGun(char) or findGun(t:FindFirstChild("Backpack"))
 end
 getgenv().SpamGunDragonStorm = function(E)
 	if not E then
@@ -5589,11 +5624,13 @@ getgenv().SpamGunDragonStorm = function(E)
 		if E:IsA("Model") then
 			part = E:FindFirstChild("Hitbox11")
 				or E:FindFirstChild("HumanoidRootPart")
+				or E:FindFirstChild("Engine")
 				or E.PrimaryPart
 				or E:FindFirstChildWhichIsA("BasePart")
 		elseif not E:IsA("BasePart") then
 			part = E:FindFirstChild("Hitbox11")
 				or E:FindFirstChild("HumanoidRootPart")
+				or E:FindFirstChild("Engine")
 				or E:FindFirstChildWhichIsA("BasePart")
 		end
 	end
@@ -5604,21 +5641,35 @@ getgenv().SpamGunDragonStorm = function(E)
 	if not char then
 		return
 	end
-	local d = char:FindFirstChild("Dragonstorm") or getgenv().EnsureDragonstorm()
+	local d = getgenv().EnsureDragonstorm()
 	if not d then
 		return
 	end
+	-- se ainda estiver no backpack, tenta equipar de novo
+	if d.Parent ~= char then
+		local hum = char:FindFirstChildOfClass("Humanoid")
+		if hum then
+			pcall(function()
+				hum:EquipTool(d)
+			end)
+			task.wait(0.08)
+			d = char:FindFirstChild(d.Name) or d
+		end
+	end
+	local reloading = false
 	pcall(function()
-		local cu = require(m.CombatUtil)
+		local cu = require(game:GetService("ReplicatedStorage").Modules.CombatUtil)
 		if cu:IsGunReloading(d) then
-			return
+			reloading = true
 		end
 	end)
-	-- validator (alguns executors falham no getupvalue — cai no fallback)
-	local ok = pcall(function()
-		local attackFn = require(L.Controllers.CombatController).Attack
-		local l = getupvalues(attackFn)[9]
-		local I, _, o, V, N, y, P =
+	if reloading then
+		return
+	end
+	-- validator igual ShootM1
+	pcall(function()
+		local l = getupvalues(require(game:GetService("ReplicatedStorage").Controllers.CombatController).Attack)[9]
+		local Q, d2, I, _, o, V, N =
 			debug.getupvalue(l, 15),
 			debug.getupvalue(l, 13),
 			debug.getupvalue(l, 16),
@@ -5626,22 +5677,32 @@ getgenv().SpamGunDragonStorm = function(E)
 			debug.getupvalue(l, 14),
 			debug.getupvalue(l, 12),
 			debug.getupvalue(l, 18)
-		local Q = y * _
-		local dval = ((N * _ + y * I) % o * o + Q) % V
-		N = math.floor(dval / o)
-		y = dval - N * o
-		P += 1
-		debug.setupvalue(l, 15, I)
-		debug.setupvalue(l, 13, _)
-		debug.setupvalue(l, 16, o)
-		debug.setupvalue(l, 17, V)
-		debug.setupvalue(l, 14, N)
-		debug.setupvalue(l, 12, y)
-		debug.setupvalue(l, 18, P)
-		L.Remotes.Validator2:FireServer(math.floor(dval / V * 16777215), P)
+		local y = V * d2
+		local P = ((o * d2 + V * Q) % I * I + y) % _
+		o = math.floor(P / I)
+		V = P - o * I
+		N += 1
+		debug.setupvalue(l, 15, Q)
+		debug.setupvalue(l, 13, d2)
+		debug.setupvalue(l, 16, I)
+		debug.setupvalue(l, 17, _)
+		debug.setupvalue(l, 14, o)
+		debug.setupvalue(l, 12, V)
+		debug.setupvalue(l, 18, N)
+		game.ReplicatedStorage.Remotes.Validator2:FireServer(math.floor(P / _ * 16777215), N)
 	end)
+	-- tiro (mesmo formato do ShootM1)
 	pcall(function()
-		m.Net:FindFirstChild("RE/ShootGunEvent"):FireServer(part.Position, { part })
+		local remote = game:GetService("ReplicatedStorage").Modules.Net:FindFirstChild("RE/ShootGunEvent")
+		if remote then
+			remote:FireServer(part.Position, { part })
+		end
+	end)
+	-- fallback: Activate da tool
+	pcall(function()
+		if d:IsA("Tool") then
+			d:Activate()
+		end
 	end)
 end
 function ShootM1(E)
@@ -6006,20 +6067,44 @@ SettingFarmMainSection.CreateToggle(
 	end
 )
 SettingFarmMainSection.CreateToggle(
-	{ Title = "Kill Aura With DragonStorm", Desc = nil, Default = Settings["Kill Aura With DragonStorm"] or false },
+	{ Title = "Kill Aura With DragonStorm", Desc = "Atira Dragonstorm em NPCs/mobs perto", Default = Settings["Kill Aura With DragonStorm"] or false },
 	function(I)
 		if I then
 			spawn(function()
-				while Settings["Kill Aura With DragonStorm"] and (wait()) do
+				while Settings["Kill Aura With DragonStorm"] do
 					pcall(function()
-						if t.Character:FindFirstChild("Dragonstorm") and getgenv().SpamGunDragonStorm then
-							local _ = m(game.Players.LocalPlayer, 150)
-							if _ then
-								local m, o = _[1], _[2]
-								SpamGunDragonStorm(m.PrimaryPart)
+						getgenv().EnsureDragonstorm()
+						local nearest, best = nil, 200
+						local enemies = workspace:FindFirstChild("Enemies")
+						if enemies then
+							for _, mob in ipairs(enemies:GetChildren()) do
+								if mob:IsA("Model") then
+									local hrp = mob:FindFirstChild("HumanoidRootPart")
+									local hum = mob:FindFirstChildOfClass("Humanoid")
+									local hp = mob:FindFirstChild("Humanoid") and mob.Humanoid
+									local alive = false
+									if hum and hum.Health > 0 then
+										alive = true
+									elseif mob:FindFirstChild("Humanoid") and mob.Humanoid:IsA("Humanoid") and mob.Humanoid.Health > 0 then
+										alive = true
+									elseif mob:FindFirstChild("Health") and mob.Health.Value > 0 then
+										alive = true
+									end
+									if hrp and alive then
+										local d = t:DistanceFromCharacter(hrp.Position)
+										if d < best then
+											best = d
+											nearest = hrp
+										end
+									end
+								end
 							end
 						end
+						if nearest then
+							SpamGunDragonStorm(nearest)
+						end
 					end)
+					task.wait(0.12)
 				end
 			end)
 		end
@@ -6723,7 +6808,14 @@ local function H(C)
 	end
 end
 function UsedualFlock()
-	equiptool(NameWeapon(Settings["Select Weapon"] or "Melee"))
+	local wtype = Settings["Select Weapon"] or "Melee"
+	if wtype == "Gun" or Settings["Kill Aura With DragonStorm"] then
+		local g = getgenv().EnsureDragonstorm and getgenv().EnsureDragonstorm()
+		if g then
+			return
+		end
+	end
+	equiptool(NameWeapon(wtype))
 end
 function FarmMastery(V)
 	if not V or not V:FindFirstChild("Humanoid") or not V:FindFirstChild("HumanoidRootPart") then
