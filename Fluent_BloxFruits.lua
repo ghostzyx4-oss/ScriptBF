@@ -382,80 +382,256 @@ game:GetService("Players").LocalPlayer.Idled:connect(function()
 	wait(1)
 	vu:Button2Up(Vector2.new(0, 0), workspace.CurrentCamera.CFrame)
 end)
-local A
+-- ===================== FLUENT UI (estilo Banana Hub antigo) =====================
+local Fluent
 do
 	local urls = {
-		"https://raw.githubusercontent.com/obiiyeuem/vthangsitink/refs/heads/main/zzzz.lua",
-		"https://cdn.jsdelivr.net/gh/obiiyeuem/vthangsitink@main/zzzz.lua",
+		"https://github.com/dawid-scripts/Fluent/releases/latest/download/main.lua",
+		"https://raw.githubusercontent.com/dawid-scripts/Fluent/master/main.lua",
+		"https://cdn.jsdelivr.net/gh/dawid-scripts/Fluent@master/main.lua",
+		"https://raw.githubusercontent.com/huyyeuemhihi/Fluent/refs/heads/main/Fluentvip.lua",
 	}
 	for _, url in ipairs(urls) do
 		local ok, res = pcall(function()
 			return loadstring(game:HttpGet(url))()
 		end)
-		if ok and type(res) == "table" and res.CreateMain then
-			A = res
-			print("[Hub] UI library OK:", url)
+		if ok and type(res) == "table" and res.CreateWindow then
+			Fluent = res
+			print("[Hub] Fluent OK:", url)
 			break
 		else
-			warn("[Hub] UI library falhou:", url, res)
+			warn("[Hub] Fluent falhou:", url, res)
 		end
 	end
 end
-if not A then
-	warn("[Hub] Banana UI (zzzz) falhou — fallback simples")
-	-- fallback minimo para nao ficar sem interface
-	local CoreGui = game:GetService("CoreGui")
-	local sg = Instance.new("ScreenGui")
-	sg.Name = "HubFallbackUI"
-	sg.ResetOnSpawn = false
-	sg.Parent = CoreGui
-	local f = Instance.new("Frame")
-	f.Size = UDim2.new(0, 320, 0, 160)
-	f.Position = UDim2.new(0.5, -160, 0.2, 0)
-	f.BackgroundColor3 = Color3.fromRGB(20, 20, 20)
-	f.Parent = sg
-	Instance.new("UICorner", f).CornerRadius = UDim.new(0, 10)
-	local tlabel = Instance.new("TextLabel")
-	tlabel.Size = UDim2.new(1, -20, 1, -20)
-	tlabel.Position = UDim2.new(0, 10, 0, 10)
-	tlabel.BackgroundTransparency = 1
-	tlabel.TextColor3 = Color3.fromRGB(255, 255, 255)
-	tlabel.TextWrapped = true
-	tlabel.Font = Enum.Font.GothamBold
-	tlabel.TextSize = 14
-	tlabel.Text = "UI Banana (zzzz.lua) nao carregou.\nExecutor bloqueou HttpGet.\nTente outro executor ou libere HTTP."
-	tlabel.Parent = f
-	A = {
-		CreateMain = function()
-			return {
-				CreatePage = function()
-					return {
-						CreateSection = function()
-							return {
-								CreateToggle = function() end,
-								CreateButton = function() end,
-								CreateDropdown = function()
-									return { GetNewList = function() end }
-								end,
-								CreateLabel = function()
-									return { SetText = function() end }
-								end,
-								CreateSlider = function() end,
-								CreateTextBox = function() end,
-							}
-						end,
-					}
-				end,
-			}
-		end,
-		Options = {},
-		CreateNoti = function() end,
-	}
+if not Fluent then
+	error("[Hub] Fluent UI nao carregou (HttpGet bloqueado?).")
 end
-Main = guardUI(A.CreateMain({ Title = "Blox Fruit", Desc = " - Blox Fruit" }), "Main")
+
+local Window = Fluent:CreateWindow({
+	Title = "Banana Cat Hub",
+	SubTitle = "Blox Fruit",
+	TabWidth = 160,
+	Size = UDim2.fromOffset(580, 460),
+	Acrylic = false,
+	Theme = "Dark",
+	MinimizeKey = Enum.KeyCode.LeftControl,
+})
+
+local Options = Fluent.Options or {}
+local A = { Options = Options }
+
+function A.CreateNoti(cfg)
+	cfg = cfg or {}
+	pcall(function()
+		Fluent:Notify({
+			Title = cfg.Title or "Banana Cat Hub",
+			Content = cfg.Desc or cfg.Content or "",
+			Duration = cfg.ShowTime or cfg.Duration or 5,
+		})
+	end)
+end
+
+local function makeSection(tab)
+	local Section = {}
+	function Section.CreateToggle(opts, cb)
+		opts = opts or {}
+		local title = opts.Title or "Toggle"
+		local def = opts.Default or false
+		local id = title
+		pcall(function()
+			tab:AddToggle(id, {
+				Title = title,
+				Description = opts.Desc or "",
+				Default = def,
+				Callback = function(v)
+					if cb then
+						pcall(cb, v)
+					end
+				end,
+			})
+		end)
+	end
+	function Section.CreateButton(opts, cb)
+		opts = opts or {}
+		pcall(function()
+			tab:AddButton({
+				Title = opts.Title or "Button",
+				Description = opts.Desc or "",
+				Callback = function()
+					if cb then
+						pcall(cb)
+					end
+				end,
+			})
+		end)
+	end
+	function Section.CreateDropdown(opts, cb)
+		opts = opts or {}
+		local list = opts.List or opts.Values or { "None" }
+		local def = opts.Default
+		local dd
+		pcall(function()
+			dd = tab:AddDropdown(opts.Title or "Dropdown", {
+				Title = opts.Title or "Dropdown",
+				Description = opts.Desc or "",
+				Values = list,
+				Default = def,
+				Multi = opts.Selected == true,
+				Callback = function(v)
+					if cb then
+						pcall(cb, v)
+					end
+				end,
+			})
+		end)
+		return {
+			GetNewList = function(_, newList)
+				pcall(function()
+					if dd and dd.SetValues then
+						dd:SetValues(newList or list)
+					end
+				end)
+			end,
+		}
+	end
+	function Section.CreateLabel(opts)
+		opts = opts or {}
+		local p
+		pcall(function()
+			p = tab:AddParagraph(opts.Title or "Label", {
+				Title = opts.Title or "",
+				Content = opts.Content or opts.Title or "",
+			})
+		end)
+		return {
+			SetText = function(_, text)
+				pcall(function()
+					if p then
+						if p.SetDesc then
+							p:SetDesc(tostring(text))
+						elseif p.Set then
+							p:Set({ Title = opts.Title or "", Content = tostring(text) })
+						end
+					end
+				end)
+			end,
+		}
+	end
+	function Section.CreateSlider(opts, cb)
+		opts = opts or {}
+		pcall(function()
+			tab:AddSlider(opts.Title or "Slider", {
+				Title = opts.Title or "Slider",
+				Description = opts.Desc or "",
+				Default = opts.Default or 0,
+				Min = opts.Min or 0,
+				Max = opts.Max or 100,
+				Rounding = opts.Precise and 1 or (opts.Rounding or 0),
+				Callback = function(v)
+					if cb then
+						pcall(cb, v)
+					end
+				end,
+			})
+		end)
+	end
+	function Section.CreateTextBox(opts, cb)
+		opts = opts or {}
+		pcall(function()
+			tab:AddInput(opts.Title or "Input", {
+				Title = opts.Title or "Input",
+				Default = opts.Default or "",
+				Placeholder = opts.Placeholder or "",
+				Callback = function(v)
+					if cb then
+						pcall(cb, v)
+					end
+				end,
+			})
+		end)
+	end
+	return Section
+end
+
+local Main = {}
+function Main.CreatePage(cfg)
+	cfg = cfg or {}
+	local name = cfg.Page_Title or cfg.Page_Name or "Tab"
+	local tab
+	pcall(function()
+		tab = Window:AddTab({ Title = name, Icon = "rbxassetid://7733960981" })
+	end)
+	if not tab then
+		tab = {
+			AddToggle = function() end,
+			AddButton = function() end,
+			AddDropdown = function() end,
+			AddParagraph = function() end,
+			AddSection = function() end,
+			AddSlider = function() end,
+			AddInput = function() end,
+		}
+	end
+	local Page = {}
+	function Page.CreateSection(secName)
+		pcall(function()
+			if tab.AddSection then
+				tab:AddSection(tostring(secName or "Section"))
+			end
+		end)
+		return makeSection(tab)
+	end
+	return Page
+end
+
+-- Botao flutuante abrir/fechar (estilo Banana Hub)
+do
+	local CoreGui = game:GetService("CoreGui")
+	local lp = game:GetService("Players").LocalPlayer
+	local parent = CoreGui
+	local sg = Instance.new("ScreenGui")
+	sg.Name = "BananaHubToggle"
+	sg.ResetOnSpawn = false
+	sg.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
+	sg.DisplayOrder = 999
+	pcall(function()
+		sg.Parent = parent
+	end)
+	if not sg.Parent then
+		sg.Parent = lp:WaitForChild("PlayerGui")
+	end
+	local btn = Instance.new("ImageButton")
+	btn.Name = "OpenClose"
+	btn.Size = UDim2.new(0, 50, 0, 50)
+	btn.Position = UDim2.new(0, 12, 0.4, 0)
+	btn.BackgroundColor3 = Color3.fromRGB(25, 25, 30)
+	btn.Image = "rbxassetid://7733960981" -- banana style
+	btn.ScaleType = Enum.ScaleType.Fit
+	btn.Parent = sg
+	Instance.new("UICorner", btn).CornerRadius = UDim.new(1, 0)
+	local st = Instance.new("UIStroke", btn)
+	st.Color = Color3.fromRGB(255, 200, 50)
+	st.Thickness = 1.5
+	btn.MouseButton1Click:Connect(function()
+		pcall(function()
+			if Window.Minimize then
+				Window:Minimize()
+			end
+		end)
+	end)
+end
+
 pcall(function()
-	print("[Hub] Main UI criada")
+	Fluent:Notify({
+		Title = "Banana Cat Hub",
+		Content = "Fluent UI carregada",
+		Duration = 4,
+	})
 end)
+
+print("[Hub] Fluent Banana Hub pronta")
+
 PageShop = Main.CreatePage({ Page_Name = "Shop", Page_Title = "Shop" })
 getgenv().Options = A.Options
 SectionShopMisc = PageShop.CreateSection("Misc Shop")
